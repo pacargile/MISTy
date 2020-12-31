@@ -109,7 +109,6 @@ class TrainMod(object):
         # pull a quick set of test models to determine general properties
         mod_test = self.mistmods.pullmod(
             self.numtest,
-            norm=True,
             eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
         self.mod_test = Table()
