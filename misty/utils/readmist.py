@@ -88,7 +88,8 @@ class readmist(object):
             })
 
     def normf(self,inarr,label):
-        return ((inarr-self.minmax[label][0])/(self.minmax[label][1]-self.minmax[label][0])) - 0.5
+        return ((inarr-self.minmax[label][0])/
+            (self.minmax[label][1]-self.minmax[label][0])) - 0.5
 
 
     def selmod(self,inlabels,**kwargs):

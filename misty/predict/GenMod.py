@@ -73,10 +73,16 @@ class ANN(object):
     else:
       self.nnpath  = misty.__abspath__+'data/ANN/mistyNN.h5'
 
+    self.normed = kwargs.get('normed',False)
+
     if self.verbose:
       print('... Reading in {0}'.format(self.nnpath))
     th5 = h5py.File(self.nnpath,'r')
     
+    if self.normed:
+        self.ymin = np.array(th5['ymin'])
+        self.ymax = np.array(th5['ymax'])
+
     self.NNtype = kwargs.get('NNtype','SMLP')
 
     self.model = readNN(self.nnpath,NNtype=self.NNtype)
@@ -90,18 +96,25 @@ class ANN(object):
       inputD = x.shape[0]
     inputVar = Variable(torch.from_numpy(x).type(dtype)).reshape(inputD,self.model.D_in)
     outpars = self.model(inputVar)
-    return outpars.data.numpy().squeeze()
+    outpars = outpars.data.numpy().squeeze()
+
+    if self.normed:
+        outpars = np.array([self.unnorm(x,ii) for ii,x in enumerate(outpars)])
+    return outpars
+
+  def unnorm(self,x,ii):
+    return (x + 0.5)*(self.ymax[ii]-self.ymin[ii]) + self.ymin[ii]
 
 class modpred(object):
   """docstring for modpred"""
-  def __init__(self, nnpath=None, NNtype='SMLP'):
+  def __init__(self, nnpath=None, NNtype='SMLP', normed=False):
     super(modpred, self).__init__()
     if nnpath != None:
       self.nnpath = nnpath
     else:
       self.nnpath  = misty.__abspath__+'data/ANN/mistyNN.h5'
 
-    self.anns = ANN(nnpath=self.nnpath,NNtype=NNtype)
+    self.anns = ANN(nnpath=self.nnpath,NNtype=NNtype,normed=normed)
 
   def pred(self,inpars):
     return self.anns.eval(inpars)

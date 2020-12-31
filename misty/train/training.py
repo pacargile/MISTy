@@ -109,6 +109,7 @@ class TrainMod(object):
         # pull a quick set of test models to determine general properties
         mod_test = self.mistmods.pullmod(
             self.numtest,
+            norm=True,
             eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
         self.mod_test = Table()
@@ -269,6 +270,7 @@ class TrainMod(object):
             # pull training data
             mod_t = self.mistmods.pullmod(
                 self.numtrain,
+                norm=True,
                 excludelabels=self.testlabels,
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
@@ -285,6 +287,7 @@ class TrainMod(object):
             # pull validataion data
             mod_v = self.mistmods.pullmod(
                 self.numtrain,
+                norm=True,
                 excludelabels=np.array(list(self.testlabels)+list(X_train_labels)),
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
