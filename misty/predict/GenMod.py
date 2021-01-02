@@ -16,13 +16,13 @@ from datetime import datetime
 
 from ..utils import NNmodels
 
-def defmod(D_in,H1,H2,D_out,xmin,xmax,NNtype='SMLP'):
+def defmod(D_in,H1,H2,H3,D_out,xmin,xmax,NNtype='SMLP'):
     if NNtype == 'ResNet':
         return NNmodels.ResNet(D_in,H1,H2,D_out,xmin,xmax)
     elif NNtype == 'LinNet':
-        return NNmodels.LinNet(D_in,H1,H2,D_out,xmin,xmax)
+        return NNmodels.LinNet(D_in,H1,H2,H3,D_out,xmin,xmax)
     else:
-        return NNmodels.SMLP(D_in,H1,H2,D_out,xmin,xmax)
+        return NNmodels.SMLP(D_in,H1,H2,H3,D_out,xmin,xmax)
 
 def readNN(nnpath,NNtype='SMLP'):
     # read in the file for the previous run 
@@ -35,7 +35,8 @@ def readNN(nnpath,NNtype='SMLP'):
         D_in  = nnh5['model/features.0.weight'].shape[1]
         H1    = nnh5['model/features.0.weight'].shape[0]
         H2    = nnh5['model/features.2.weight'].shape[0]
-        D_out = nnh5['model/features.4.weight'].shape[0]
+        H3    = nnh5['model/features.4.weight'].shape[0]
+        D_out = nnh5['model/features.6.weight'].shape[0]
 
     if NNtype == 'ResNet':
         D_in      = nnh5['model/ConvTranspose1d.weight'].shape[1]
@@ -44,11 +45,12 @@ def readNN(nnpath,NNtype='SMLP'):
         outputdim = len([x_i for x_i in list(nnh5['model'].keys()) if 'weight' in x_i])
         D_out     = nnh5['model/lin{0}.weight'.format(outputdim)].shape[0]
     
-    model = defmod(D_in,H1,H2,D_out,xmin,xmax,NNtype=NNtype)
+    model = defmod(D_in,H1,H2,H3,D_out,xmin,xmax,NNtype=NNtype)
 
     model.D_in = D_in
     model.H1 = H1
     model.H2 = H2
+    model.H3 = H3
     model.D_out = D_out
 
     newmoddict = {}

@@ -14,7 +14,7 @@ import time,sys,os,glob
 
 # simple multi-layer perceptron model
 class SMLP(nn.Module):
-    def __init__(self, D_in, H1, H2, D_out, xmin, xmax):
+    def __init__(self, D_in, H1, H2, H3, D_out, xmin, xmax):
         super(SMLP, self).__init__()
 
         self.xmin = xmin
@@ -25,7 +25,9 @@ class SMLP(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(H1, H2),
             nn.LeakyReLU(),
-            nn.Linear(H2, D_out),
+            nn.Linear(H2, H3),
+            nn.LeakyReLU(),
+            nn.Linear(H3, D_out),
         )
     
     def encode(self,x):
@@ -40,7 +42,7 @@ class SMLP(nn.Module):
 
 # linear feed-foward model with sigmoid activation functions
 class LinNet(nn.Module):  
-    def __init__(self, D_in, H1, H2, D_out, xmin, xmax):
+    def __init__(self, D_in, H1, H2, H3, D_out, xmin, xmax):
         super(LinNet, self).__init__()
 
         self.xmin = xmin
@@ -50,7 +52,8 @@ class LinNet(nn.Module):
         self.lin2 = nn.Linear(H1,H1)
         self.lin3 = nn.Linear(H1,H2)
         self.lin4 = nn.Linear(H2,H2)
-        self.lin5 = nn.Linear(H2, D_out)
+        self.lin5 = nn.Linear(H2,H3)
+        self.lin6 = nn.Linear(H3, D_out)
 
     def forward(self, x):
         x_i = self.encode(x)
@@ -58,7 +61,8 @@ class LinNet(nn.Module):
         out2 = torch.sigmoid(self.lin2(out1))
         out3 = torch.sigmoid(self.lin3(out2))
         out4 = torch.sigmoid(self.lin4(out3))
-        y_i = self.lin5(out4)
+        out5 = torch.sigmoid(self.lin5(out4))
+        y_i = self.lin6(out5)
         return y_i     
 
     def encode(self,x):

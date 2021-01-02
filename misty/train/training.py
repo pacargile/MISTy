@@ -9,6 +9,9 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau
 
+import torch.multiprocessing as multiprocessing
+from torch.multiprocessing import Pool
+
 from astropy.table import Table,vstack
 
 import matplotlib
@@ -31,13 +34,13 @@ def slicebatch(inlist,N):
     '''
     return [inlist[ii:ii+N] for ii in range(0,len(inlist),N)]
 
-def defmod(D_in,H1,H2,D_out,xmin,xmax,NNtype='SMLP'):
+def defmod(D_in,H1,H2,H3,D_out,xmin,xmax,NNtype='SMLP'):
     if NNtype == 'ResNet':
         return NNmodels.ResNet(D_in,H1,H2,D_out,xmin,xmax)
     elif NNtype == 'LinNet':
-        return NNmodels.LinNet(D_in,H1,H2,D_out,xmin,xmax)
+        return NNmodels.LinNet(D_in,H1,H2,H3,D_out,xmin,xmax)
     else:
-        return NNmodels.SMLP(D_in,H1,H2,D_out,xmin,xmax)
+        return NNmodels.SMLP(D_in,H1,H2,H3,D_out,xmin,xmax)
 
 class TrainMod(object):
     """docstring for TrainMod"""
@@ -78,6 +81,11 @@ class TrainMod(object):
 
         if 'H2' in kwargs:
             self.H2 = kwargs['H2']
+        else:
+            self.H2 = 256
+
+        if 'H3' in kwargs:
+            self.H2 = kwargs['H3']
         else:
             self.H2 = 256
 
@@ -223,7 +231,7 @@ class TrainMod(object):
             model.train()
         else:
             # initialize the model
-            model = defmod(self.D_in,self.H1,self.H2,self.D_out,
+            model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,
                 self.xmin,self.xmax,NNtype=self.NNtype)
             model.to(device)
             model.train()
