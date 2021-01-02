@@ -26,7 +26,7 @@ import time,sys,os,glob
 from datetime import datetime
 
 from ..utils import NNmodels, radam, readmist
-
+from ..predict import GenMod
 
 def slicebatch(inlist,N):
     '''
@@ -85,9 +85,9 @@ class TrainMod(object):
             self.H2 = 256
 
         if 'H3' in kwargs:
-            self.H2 = kwargs['H3']
+            self.H3 = kwargs['H3']
         else:
-            self.H2 = 256
+            self.H3 = 256
 
         # check for user defined ranges for atm models
         self.eeprange  = kwargs.get('eep',None)
@@ -176,33 +176,9 @@ class TrainMod(object):
         print('Starting Training at {0}'.format(tottimestart))
         sys.stdout.flush()
 
-        with h5py.File('{0}'.format(self.outfilename),'w') as outfile_i:
-            net = self()
-            if type(net[0]) == type(None):
-                return net
-            else:
-                try:
-                    outfile_i.create_dataset('test',
-                        data=np.array(self.mod_test),compression='gzip')
-                    outfile_i.create_dataset('testlabels',
-                        data=self.testlabels,compression='gzip')
-                    outfile_i.create_dataset('label_i',
-                        data=np.array([x.encode("ascii", "ignore") for x in self.label_i]))
-                    outfile_i.create_dataset('label_o',
-                        data=np.array([x.encode("ascii", "ignore") for x in self.label_o]))
-                    outfile_i.create_dataset('xmin',data=np.array(self.xmin))
-                    outfile_i.create_dataset('xmax',data=np.array(self.xmax))
-                    outfile_i.create_dataset('ymin',data=np.array(self.ymin))
-                    outfile_i.create_dataset('ymax',data=np.array(self.ymax))
-
-                    for kk in net[0].state_dict().keys():
-                        outfile_i.create_dataset(
-                            'model/{0}'.format(kk),
-                            data=net[0].state_dict()[kk].cpu().numpy(),
-                            compression='gzip')
-                except:
-                    print('!!! PROBLEM WITH WRITING TO HDF5 !!!')
-                    raise
+        net = self()
+        if type(net[0]) == type(None):
+            return net
 
     def train_mod(self):
         '''
@@ -224,17 +200,42 @@ class TrainMod(object):
 
         # determine if user wants to start from old file, or
         # create a new ANN model
-        if self.restartfile != False:
+        if self.restartfile is not False:
             # create a model
-            model = readNN(self.restartfile,NNtype=self.NNtype)
-            model.to(device)
-            model.train()
+            if os.path.isfile(self.restartfile):
+                model = GenMod.readNN(self.restartfile,NNtype=self.NNtype)
+            else:
+                print('Could Not Find Restart File, Creating a New NN model')
+                model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,
+                    self.xmin,self.xmax,NNtype=self.NNtype)        
         else:
             # initialize the model
             model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,
                 self.xmin,self.xmax,NNtype=self.NNtype)
-            model.to(device)
-            model.train()
+
+        # set up model to start training
+        model.to(device)
+        model.train()
+
+        # initialize the output file
+        with h5py.File('{0}'.format(self.outfilename),'w') as outfile_i:
+            try:
+                outfile_i.create_dataset('testpred',
+                    data=np.array(self.mod_test),compression='gzip')
+                outfile_i.create_dataset('testlabels',
+                    data=self.testlabels,compression='gzip')
+                outfile_i.create_dataset('label_i',
+                    data=np.array([x.encode("ascii", "ignore") for x in self.label_i]))
+                outfile_i.create_dataset('label_o',
+                    data=np.array([x.encode("ascii", "ignore") for x in self.label_o]))
+                outfile_i.create_dataset('xmin',data=np.array(self.xmin))
+                outfile_i.create_dataset('xmax',data=np.array(self.xmax))
+                outfile_i.create_dataset('ymin',data=np.array(self.ymin))
+                outfile_i.create_dataset('ymax',data=np.array(self.ymax))
+            except:
+                print('!!! PROBLEM WITH WRITING TO HDF5 !!!')
+                raise
+
 
         # initialize the loss function
         # loss_fn = torch.nn.MSELoss(reduction='mean')
@@ -251,7 +252,7 @@ class TrainMod(object):
         #     [p for p in model.parameters() if p.requires_grad==True], lr=learning_rate)
 
         # initialize the scheduler to adjust the learning rate
-        scheduler = StepLR(optimizer,100,gamma=0.90)
+        scheduler = StepLR(optimizer,2000,gamma=0.90)
         # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
 
         # number of batches
@@ -348,19 +349,16 @@ class TrainMod(object):
                     loss = optimizer.step(closure)
 
                 # evaluate the validation set
-                if iter_i % 100 == 0:
+                if iter_i % 25 == 0:
                     perm_valid = torch.randperm(self.numtrain)
                     if str(device) != 'cpu':
                         perm_valid = perm_valid.cuda()
-                    loss_valid = 0
 
+                    loss_valid = 0
                     for j in range(nbatches):
                         idx = perm[t * self.batchsize : (t+1) * self.batchsize]
 
-                        Y_pred_valid_Tensor = model(X_valid_Tensor[idx])
-                        
-                        # Y_valid_Tensor = Variable(torch.from_numpy(Y_valid).type(dtype), requires_grad=False)
-                        # Y_valid_Tensor = Y_valid_Tensor.to(device)
+                        Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
 
                     loss_valid /= nbatches
@@ -371,12 +369,12 @@ class TrainMod(object):
                     iter_arr.append(iter_i)
                     training_loss.append(loss_data)
                     validation_loss.append(loss_valid_data)
-
-                    print (
-                        '--> Ep: {0:d} -- Iter {1:d}/{2:d} -- Time/step: {3} -- Train Loss: {4:.4f} -- Valid Loss: {5:.4f}'.format(
-                        int(epoch_i+1),int(iter_i+1),int(self.numsteps), datetime.now()-steptime, loss_data, loss_valid_data)
-                    )
-                    sys.stdout.flush()                      
+                    if iter_i % 500 == 0.0:
+                        print (
+                            '--> Ep: {0:d} -- Iter {1:d}/{2:d} -- Time/step: {3} -- Train Loss: {4:.4f} -- Valid Loss: {5:.4f}'.format(
+                            int(epoch_i+1),int(iter_i+1),int(self.numsteps), datetime.now()-steptime, loss_data, loss_valid_data)
+                        )
+                        sys.stdout.flush()                      
 
                     fig,ax = plt.subplots(1,1)
                     ax.plot(iter_arr,np.log10(training_loss),ls='-',lw=2.0,alpha=0.75,c='C0',label='Training')
@@ -396,7 +394,20 @@ class TrainMod(object):
                 #     print(loss_valid_data,current_loss)
                 #     current_loss = loss_valid_data
                 #     break
- 
+            
+            # After Each Epoch, write network to output HDF5 file to save progress
+            with h5py.File('{0}'.format(self.outfilename),'r+') as outfile_i:
+                for kk in model.state_dict().keys():
+                    try:
+                        del outfile_i['model/{0}'.format(kk)]
+                    except KeyError:
+                        pass
+
+                    outfile_i.create_dataset(
+                        'model/{0}'.format(kk),
+                        data=model.state_dict()[kk].cpu().numpy(),
+                        compression='gzip')
+
 
         print('Finished training model, took: {0}'.format(
             datetime.now()-starttime))
