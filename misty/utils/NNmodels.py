@@ -7,7 +7,8 @@ else:
     dtype = torch.FloatTensor
 from torch.autograd import Variable
 
-import numpy as np
+# import numpy as np
+import jax.numpy as np
 import warnings
 import time,sys,os,glob
 

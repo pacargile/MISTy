@@ -8,7 +8,8 @@ else:
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-import numpy as np
+# import numpy as np
+import jax.numpy as np
 import warnings
 import h5py
 import time,sys,os,glob
