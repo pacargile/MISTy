@@ -8,8 +8,7 @@ else:
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-# import numpy as np
-import jax.numpy as np
+import numpy as np
 import warnings
 import h5py
 import time,sys,os,glob
@@ -29,8 +28,8 @@ def readNN(nnpath,NNtype='SMLP'):
     # read in the file for the previous run 
     nnh5 = h5py.File(nnpath,'r')
 
-    xmin  = np.array(nnh5['xmin'])
-    xmax  = np.array(nnh5['xmax'])
+    xmin  = nnh5['xmin'][()]
+    xmax  = nnh5['xmax'][()]
 
     if (NNtype == 'SMLP') or (NNtype == 'LinNet'):
         D_in  = nnh5['model/features.0.weight'].shape[1]
@@ -56,7 +55,7 @@ def readNN(nnpath,NNtype='SMLP'):
 
     newmoddict = {}
     for kk in nnh5['model'].keys():
-        nparr = np.array(nnh5['model'][kk])
+        nparr = nnh5['model'][kk][()]
         torarr = torch.from_numpy(nparr).type(dtype)
         newmoddict[kk] = torarr    
     model.load_state_dict(newmoddict)
@@ -83,20 +82,21 @@ class ANN(object):
     th5 = h5py.File(self.nnpath,'r')
     
     if self.normed:
-        self.ymin = np.array(th5['ymin'])
-        self.ymax = np.array(th5['ymax'])
+        self.ymin = th5['ymin'][()]
+        self.ymax = th5['ymax'][()]
 
     self.NNtype = kwargs.get('NNtype','SMLP')
 
     self.model = readNN(self.nnpath,NNtype=self.NNtype)
 
   def eval(self,x):
-    if type(x) == type([]):
-      x = np.array(x)
+    if isinstance(x,list):
+        x = np.asarray(x)
     if len(x.shape) == 1:
-      inputD = 1
+        inputD = 1
     else:
-      inputD = x.shape[0]
+        inputD = x.shape[0]
+
     inputVar = Variable(torch.from_numpy(x).type(dtype)).reshape(inputD,self.model.D_in)
     outpars = self.model(inputVar)
     outpars = outpars.data.numpy().squeeze()

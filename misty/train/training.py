@@ -244,7 +244,7 @@ class TrainMod(object):
         loss_fn = torch.nn.L1Loss(reduction = 'mean')
 
         # initialize the optimizer
-        learning_rate = 1e-4
+        learning_rate = 1e-2
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
         # we adopt rectified Adam for the optimization
@@ -252,7 +252,7 @@ class TrainMod(object):
         #     [p for p in model.parameters() if p.requires_grad==True], lr=learning_rate)
 
         # initialize the scheduler to adjust the learning rate
-        scheduler = StepLR(optimizer,2000,gamma=0.90)
+        scheduler = StepLR(optimizer,2000,gamma=0.95)
         # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
 
         # number of batches
@@ -377,8 +377,8 @@ class TrainMod(object):
                         sys.stdout.flush()                      
 
                     fig,ax = plt.subplots(1,1)
-                    ax.plot(iter_arr,np.log10(training_loss),ls='-',lw=2.0,alpha=0.75,c='C0',label='Training')
-                    ax.plot(iter_arr,np.log10(validation_loss),ls='-',lw=2.0,alpha=0.75,c='C3',label='Validation')
+                    ax.plot(iter_arr,np.log10(training_loss),ls='-',lw=1.0,alpha=0.75,c='C0',label='Training')
+                    ax.plot(iter_arr,np.log10(validation_loss),ls='-',lw=1.0,alpha=0.75,c='C3',label='Validation')
                     ax.legend()
                     ax.set_xlabel('Iteration')
                     ax.set_ylabel('log(L1 Loss)')
