@@ -238,10 +238,10 @@ class TrainMod(object):
 
 
         # initialize the loss function
-        # loss_fn = torch.nn.MSELoss(reduction='mean')
+        loss_fn = torch.nn.MSELoss(reduction='mean')
         # loss_fn = torch.nn.SmoothL1Loss(reduction='sum')
         # loss_fn = torch.nn.KLDivLoss(size_average=False)
-        loss_fn = torch.nn.L1Loss(reduction = 'mean')
+        # loss_fn = torch.nn.L1Loss(reduction = 'mean')
 
         # initialize the optimizer
         learning_rate = 1e-2
@@ -252,7 +252,7 @@ class TrainMod(object):
         #     [p for p in model.parameters() if p.requires_grad==True], lr=learning_rate)
 
         # initialize the scheduler to adjust the learning rate
-        scheduler = StepLR(optimizer,2000,gamma=0.95)
+        scheduler = StepLR(optimizer,5,gamma=0.75)
         # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
 
         # number of batches
@@ -336,9 +336,6 @@ class TrainMod(object):
                         loss.backward(retain_graph=False)
                         optimizer.step()
                         
-                        # adjust the optimizer lr
-                        scheduler.step()
-
                         if np.isnan(loss.item()):
                             print('PRED TRAIN TENSOR',Y_pred_train_Tensor)
                             print('TRAIN TENSOR',Y_train_Tensor)
@@ -394,6 +391,9 @@ class TrainMod(object):
                 #     print(loss_valid_data,current_loss)
                 #     current_loss = loss_valid_data
                 #     break
+
+            # adjust the optimizer lr
+            scheduler.step()
             
             # After Each Epoch, write network to output HDF5 file to save progress
             with h5py.File('{0}'.format(self.outfilename),'r+') as outfile_i:
