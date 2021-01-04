@@ -65,7 +65,7 @@ class readmist(object):
             'log_age',
             '[Fe/H]',
             '[a/Fe]',
-            'Agewgt',
+            # 'Agewgt',
             ])
 
         # need min-max values for each column used in models
@@ -84,12 +84,11 @@ class readmist(object):
             'log_age':[0,np.log10(20E+9)],
             '[Fe/H]':[-4.0,0.5],
             '[a/Fe]':[-0.2,0.6],
-            'Agewgt':[0,0.05],
+            # 'Agewgt':[0,0.05],
             })
 
     def normf(self,inarr,label):
-        return ((inarr-self.minmax[label][0])/
-            (self.minmax[label][1]-self.minmax[label][0])) - 0.5
+        return ((inarr-self.minmax[label][0])/(self.minmax[label][1]-self.minmax[label][0])) - 0.5
 
 
     def selmod(self,inlabels,**kwargs):
@@ -117,7 +116,7 @@ class readmist(object):
         logage_o = []
         FeHs_o = []
         aFes_o = []
-        Agewgt_o = []
+        # Agewgt_o = []
 
 
         for li in inlabels:
@@ -155,7 +154,7 @@ class readmist(object):
                 logage_o.append(self.normf(mod_o['log_age'][mod_nearest],'log_age'))
                 FeHs_o.append(self.normf(mod_o['[Fe/H]'][mod_nearest],'[Fe/H]'))
                 aFes_o.append(self.normf(mod_o['[a/Fe]'][mod_nearest],'[a/Fe]'))
-                Agewgt_o.append(self.normf(mod_o['Agewgt'][mod_nearest],'Agewgt'))
+                # Agewgt_o.append(self.normf(mod_o['Agewgt'][mod_nearest],'Agewgt'))
             else:
                 starmass_o.append(mod_o['star_mass'][mod_nearest])
                 logL_o.append(mod_o['log_L'][mod_nearest])
@@ -165,7 +164,7 @@ class readmist(object):
                 logage_o.append(mod_o['log_age'][mod_nearest])
                 FeHs_o.append(mod_o['[Fe/H]'][mod_nearest])
                 aFes_o.append(mod_o['[a/Fe]'][mod_nearest])
-                Agewgt_o.append(mod_o['Agewgt'][mod_nearest])
+                # Agewgt_o.append(mod_o['Agewgt'][mod_nearest])
 
         outdict = {}
         outdict['label_o']     = np.array(label_o)
@@ -177,7 +176,7 @@ class readmist(object):
         outdict['log_age']    = np.array(logage_o)
         outdict['[Fe/H]']      = np.array(FeHs_o)
         outdict['[a/Fe]']      = np.array(aFes_o)
-        outdict['Agewgt']      = np.array(Agewgt_o)
+        # outdict['Agewgt']      = np.array(Agewgt_o)
 
         return outdict
 
@@ -220,8 +219,9 @@ class readmist(object):
         logage_o = []
         FeHs_o = []
         aFes_o = []
-        Agewgt_o = []
+        # Agewgt_o = []
 
+        starttimef = datetime.now()
         for ii in range(num):
             while True:
                 # first randomly draw a [Fe/H]
@@ -286,7 +286,7 @@ class readmist(object):
                     logage_oo   = mod_o['log_age'][ind].item()
                     FeHs_oo     = mod_o['[Fe/H]'][ind].item()
                     aFes_oo     = mod_o['[a/Fe]'][ind].item()
-                    Agewgt_oo   = mod_o['Agewgt'][ind].item()
+                    # Agewgt_oo   = mod_o['Agewgt'][ind].item()
                 except ValueError:
                     print(label_i)
                     print(ind.sum())
@@ -304,7 +304,7 @@ class readmist(object):
                     logage_o.append(self.normf(logage_oo,'log_age'))
                     FeHs_o.append(self.normf(FeHs_oo,'[Fe/H]'))
                     aFes_o.append(self.normf(aFes_oo,'[a/Fe]'))
-                    Agewgt_o.append(self.normf(Agewgt_oo,'Agewgt'))
+                    # Agewgt_o.append(self.normf(Agewgt_oo,'Agewgt'))
                 else:
                     starmass_o.append(starmass_oo)
                     logL_o.append(logL_oo)
@@ -314,8 +314,9 @@ class readmist(object):
                     logage_o.append(logage_oo)
                     FeHs_o.append(FeHs_oo)
                     aFes_o.append(aFes_oo)
-                    Agewgt_o.append(Agewgt_oo)
+                    # Agewgt_o.append(Agewgt_oo)
                 break
+
 
         outdict = {}
         outdict['label_o']     = np.array(label_o)
@@ -327,6 +328,6 @@ class readmist(object):
         outdict['log_age']    = np.array(logage_o).T
         outdict['[Fe/H]']      = np.array(FeHs_o).T
         outdict['[a/Fe]']      = np.array(aFes_o).T
-        outdict['Agewgt']      = np.array(Agewgt_o).T
+        # outdict['Agewgt']      = np.array(Agewgt_o).T
 
         return outdict

@@ -137,7 +137,7 @@ class TrainMod(object):
         self.xmax = np.array([self.mistmods.minmax[x][1] 
             for x in self.label_i])
 
-        self.ymin = np.array([self.mistmods.minmax[x][0] 
+        self.ymin = np.array([self.mistmods.minmax[x][0]
             for x in self.label_o])
         self.ymax = np.array([self.mistmods.minmax[x][1] 
             for x in self.label_o])
