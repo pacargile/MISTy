@@ -59,13 +59,13 @@ class readmist(object):
             'initial_mass',
             'star_mass',
             'log_L',
-            # 'log_Teff',
+            'log_Teff',
             'log_R',
-            # 'log_g',
+            'log_g',
             'log_age',
             '[Fe/H]',
             '[a/Fe]',
-            # 'Agewgt',
+            'Agewgt',
             ])
 
         # need min-max values for each column used in models
@@ -78,13 +78,13 @@ class readmist(object):
             'initial_[a/Fe]':[-0.2,0.6],
             'star_mass':[0.25,10.0],
             'log_L':[-2.0,5.0],
-            # 'log_Teff':[np.log10(2500.0),np.log10(50000.0)],
+            'log_Teff':[np.log10(2500.0),np.log10(50000.0)],
             'log_R':[-1.0,3.0],
-            # 'log_g':[-1,5.5],
+            'log_g':[-1,5.5],
             'log_age':[0,np.log10(20E+9)],
             '[Fe/H]':[-4.0,0.5],
             '[a/Fe]':[-0.2,0.6],
-            # 'Agewgt':[0,0.05],
+            'Agewgt':[0,0.05],
             })
 
     def normf(self,inarr,label):
@@ -252,7 +252,13 @@ class readmist(object):
                     (self.massarr <= massrange[1])
                     )]
 
-                eep_i  = np.random.choice(np.unique(eeparr),p=None)
+                # draw eep with weighting towards short lived phases 
+                # since that is where the isochrones change most
+                ueeparr = np.unique(eeparr)
+                peeparr = self.Peep(ueeparr)
+                peeparr = peeparr/peeparr.sum()
+                eep_i = np.random.choice(ueeparr,p=peeparr)
+                # eep_i  = np.random.choice(np.unique(eeparr),p=None)
                 mass_i = np.random.choice(np.unique(massarr),p=None)
 
                 # assemble set of input labels 
@@ -331,3 +337,6 @@ class readmist(object):
         # outdict['Agewgt']      = np.array(Agewgt_o).T
 
         return outdict
+
+    def Peep(self,x):
+        return 0.65*np.exp(-0.5*((x-450)/150)**2) + 0.45*np.exp(-0.5*((x-650)/50)**2)
