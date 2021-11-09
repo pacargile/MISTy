@@ -254,11 +254,11 @@ class readmist(object):
 
                 # draw eep with weighting towards short lived phases 
                 # since that is where the isochrones change most
-                ueeparr = np.unique(eeparr)
-                peeparr = self.Peep(ueeparr)
-                peeparr = peeparr/peeparr.sum()
-                eep_i = np.random.choice(ueeparr,p=peeparr)
-                # eep_i  = np.random.choice(np.unique(eeparr),p=None)
+                # ueeparr = np.unique(eeparr)
+                # peeparr = self.Peep(ueeparr)
+                # peeparr = peeparr/peeparr.sum()
+                # eep_i = np.random.choice(ueeparr,p=peeparr)
+                eep_i  = np.random.choice(np.unique(eeparr),p=None)
                 mass_i = np.random.choice(np.unique(massarr),p=None)
 
                 # assemble set of input labels 
@@ -286,9 +286,9 @@ class readmist(object):
                 try:
                     starmass_oo = mod_o['star_mass'][ind].item()
                     logL_oo     = mod_o['log_L'][ind].item()
-                    # logTeff_oo  = mod_o['log_Teff'][ind].item()
+                    logTeff_oo  = mod_o['log_Teff'][ind].item()
                     logR_oo     = mod_o['log_R'][ind].item()
-                    # logg_oo     = mod_o['log_g'][ind].item()
+                    logg_oo     = mod_o['log_g'][ind].item()
                     logage_oo   = mod_o['log_age'][ind].item()
                     FeHs_oo     = mod_o['[Fe/H]'][ind].item()
                     aFes_oo     = mod_o['[a/Fe]'][ind].item()
@@ -304,9 +304,9 @@ class readmist(object):
                 if norm:
                     starmass_o.append(self.normf(starmass_oo,'star_mass'))
                     logL_o.append(self.normf(logL_oo,'log_L'))
-                    # logTeff_o.append(self.normf(logTeff_oo,'log_Teff'))
+                    logTeff_o.append(self.normf(logTeff_oo,'log_Teff'))
                     logR_o.append(self.normf(logR_oo,'log_R'))
-                    # logg_o.append(self.normf(logg_oo,'log_g'))
+                    logg_o.append(self.normf(logg_oo,'log_g'))
                     logage_o.append(self.normf(logage_oo,'log_age'))
                     FeHs_o.append(self.normf(FeHs_oo,'[Fe/H]'))
                     aFes_o.append(self.normf(aFes_oo,'[a/Fe]'))
@@ -314,9 +314,9 @@ class readmist(object):
                 else:
                     starmass_o.append(starmass_oo)
                     logL_o.append(logL_oo)
-                    # logTeff_o.append(logTeff_oo)
+                    logTeff_o.append(logTeff_oo)
                     logR_o.append(logR_oo)
-                    # logg_o.append(logg_oo)
+                    logg_o.append(logg_oo)
                     logage_o.append(logage_oo)
                     FeHs_o.append(FeHs_oo)
                     aFes_o.append(aFes_oo)
@@ -328,9 +328,9 @@ class readmist(object):
         outdict['label_o']     = np.array(label_o)
         outdict['star_mass']   = np.array(starmass_o).T
         outdict['log_L']      = np.array(logL_o).T
-        # outdict['log_Teff']   = np.array(logTeff_o).T
+        outdict['log_Teff']   = np.array(logTeff_o).T
         outdict['log_R']      = np.array(logR_o).T
-        # outdict['log_g']      = np.array(logg_o).T
+        outdict['log_g']      = np.array(logg_o).T
         outdict['log_age']    = np.array(logage_o).T
         outdict['[Fe/H]']      = np.array(FeHs_o).T
         outdict['[a/Fe]']      = np.array(aFes_o).T
