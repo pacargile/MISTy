@@ -94,7 +94,7 @@ class modpred(object):
     x = [eep,mass,feh,afe]
 
     modpred = self.pred(x)
-    # output: 'star_mass', 'log_L', 'log_R', 'log_age', '[Fe/H]', '[a/Fe]'
+    # output: 'star_mass', 'log_L', 'log_Teff', log_R', 'log_g', 'log_age', '[Fe/H]', '[a/Fe]'
 
     self.modpararr = ([
         'EEP',
@@ -110,8 +110,8 @@ class modpred(object):
         '[a/Fe]',
         'log(g)',])
 
-    logTeff = 0.25 * (modpred[1] - 2.0 * modpred[2]) + np.log10(5772.0)
-    logg    = np.log10(modpred[0]) - 2.0 * modpred[2] + 4.4374
+    # logTeff = 0.25 * (modpred[1] - 2.0 * modpred[2]) + np.log10(5772.0)
+    # logg    = np.log10(modpred[0]) - 2.0 * modpred[2] + 4.4374
 
-    out = [eep,mass,feh,afe,modpred[3],modpred[0],modpred[2],modpred[1],logTeff,modpred[4],modpred[5],logg]
+    out = [eep,mass,feh,afe,modpred[5],modpred[0],modpred[3],modpred[1],modpred[2],modpred[6],modpred[7],modpred[4]]
     return out
