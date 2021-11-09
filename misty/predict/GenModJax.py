@@ -89,3 +89,29 @@ class modpred(object):
 
   def pred(self,inpars):
     return self.anns.eval(inpars)
+
+  def getMIST(self,eep=300, mass=1.0, feh=0.0, afe=0.0, **kwargs):
+    x = [eep,mass,feh,afe]
+
+    modpred = self.pred(x)
+    # output: 'star_mass', 'log_L', 'log_R', 'log_age', '[Fe/H]', '[a/Fe]'
+
+    self.modpararr = ([
+        'EEP',
+        'initial_Mass',
+        'initial_[Fe/H]',
+        'initial_[a/Fe]',
+        'log(Age)',
+        'Mass',
+        'log(R)',
+        'log(L)',
+        'log(Teff)',
+        '[Fe/H]',
+        '[a/Fe]',
+        'log(g)',])
+
+    logTeff = 0.25 * (modpred[1] - 2.0 * modpred[2]) + np.log10(5772.0)
+    logg    = np.log10(modpred[0]) - 2.0 * modpred[2] + 4.4374
+
+    out = [eep,mass,feh,afe,modpred[3],modpred[0],modpred[2],modpred[1],logTeff,modpred[4],modpred[5],logg]
+    return out
