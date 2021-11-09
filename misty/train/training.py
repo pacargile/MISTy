@@ -148,6 +148,8 @@ class TrainMod(object):
         self.D_out = len(self.label_o)
 
         print('... Din: {}, Dout: {}'.format(self.D_in,self.D_out))
+        print('... Input Labels: {}'.format(self.label_i))
+        print('... Output Labels: {}'.format(self.label_o))
 
         print('... Finished Init')
         sys.stdout.flush()
