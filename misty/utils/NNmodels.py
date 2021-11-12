@@ -91,12 +91,12 @@ class ResNet(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(H1, H2),
             nn.LeakyReLU(),
-            nn.Linear(H2, D_out),
+            nn.Linear(H2, self.D_out),
         )
 
         kernel_size = 11
         
-        self.deconv1 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
+        self.deconv1 = nn.ConvTranspose1d(self.D_out, 64, kernel_size, stride=3, padding=5)
         self.deconv2 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
         self.deconv3 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
         self.deconv4 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
@@ -122,8 +122,9 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         x_i = self.encode(x)
-        x_i = self.features(x_i)[:,None,:]
-        x_i = x_i.view(x_i.shape[0], 64, self.D_in)
+        x_i = self.features(x_i)#[:,None,:]
+        # print(x_i.shape)
+        # x_i = x_i.view(x_i.shape[0], 1, self.D_out)
 
         x1 = self.deconv1(x_i)
 

@@ -31,13 +31,20 @@ def readNN(nnpath,NNtype='SMLP'):
     xmin  = nnh5['xmin'][()]
     xmax  = nnh5['xmax'][()]
 
-    if (NNtype == 'SMLP') or (NNtype == 'LinNet'):
+    if (NNtype == 'SMLP'):
         D_in  = nnh5['model/features.0.weight'].shape[1]
         H1    = nnh5['model/features.0.weight'].shape[0]
         H2    = nnh5['model/features.2.weight'].shape[0]
         H3    = nnh5['model/features.4.weight'].shape[0]
         D_out = nnh5['model/features.6.weight'].shape[0]
 
+    if (NNtype == 'LinNet'):
+        D_in  = nnh5['model/lin1.weight'].shape[1]
+        H1    = nnh5['model/lin1.weight'].shape[0]
+        H2    = nnh5['model/lin4.weight'].shape[0]
+        H3    = nnh5['model/lin5.weight'].shape[0]
+        D_out = nnh5['model/lin6.weight'].shape[0]
+    
     if NNtype == 'ResNet':
         D_in      = nnh5['model/ConvTranspose1d.weight'].shape[1]
         H1        = nnh5['model/lin1.weight'].shape[0]

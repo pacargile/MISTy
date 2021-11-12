@@ -27,6 +27,7 @@ from datetime import datetime
 
 from ..utils import NNmodels, radam, readmist
 from ..predict import GenMod
+# from ..predict import GenModJax as GenMod
 
 def slicebatch(inlist,N):
     '''
@@ -206,6 +207,7 @@ class TrainMod(object):
             # create a model
             if os.path.isfile(self.restartfile):
                 model = GenMod.readNN(self.restartfile,NNtype=self.NNtype)
+                # model = GenMod.Net(nnpath=self.restartfile,nntype=self.NNtype,normed=True)
             else:
                 print('Could Not Find Restart File, Creating a New NN model')
                 model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,

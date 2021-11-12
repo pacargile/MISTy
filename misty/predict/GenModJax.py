@@ -32,7 +32,7 @@ class Net(object):
         self.label_in  = nnh5['label_i'][()]
         self.label_out = nnh5['label_o'][()]
 
-        if (nntype == 'SMLP') or (nntype == 'LinNet'):
+        if (nntype == 'SMLP'):
             self.bias0 = nnh5['model/features.0.bias'][()]
             self.bias2 = nnh5['model/features.2.bias'][()]
             self.bias4 = nnh5['model/features.4.bias'][()]
@@ -42,6 +42,25 @@ class Net(object):
             self.weight2 = nnh5['model/features.2.weight'][()]
             self.weight4 = nnh5['model/features.4.weight'][()]
             self.weight6 = nnh5['model/features.6.weight'][()]
+
+            self.eval = self.evalSMLP
+
+        if (nntype == 'LinNet'):
+            self.bias1 = nnh5['model/lin1.bias'][()]
+            self.bias2 = nnh5['model/lin2.bias'][()]
+            self.bias3 = nnh5['model/lin3.bias'][()]
+            self.bias4 = nnh5['model/lin4.bias'][()]
+            self.bias5 = nnh5['model/lin5.bias'][()]
+            self.bias6 = nnh5['model/lin6.bias'][()]
+
+            self.weight1 = nnh5['model/lin1.weight'][()]
+            self.weight2 = nnh5['model/lin2.weight'][()]
+            self.weight3 = nnh5['model/lin3.weight'][()]
+            self.weight4 = nnh5['model/lin4.weight'][()]
+            self.weight5 = nnh5['model/lin5.weight'][()]
+            self.weight6 = nnh5['model/lin6.weight'][()]
+
+            self.eval = self.evalLinNet
 
         if nntype == 'ResNet':
             raise IOError("ResNet not implemented yet with JAX")
@@ -62,12 +81,32 @@ class Net(object):
     def unnorm(self,y,ii):
         return (y + 0.5)*(self.ymax[ii]-self.ymin[ii]) + self.ymin[ii]
 
-    def eval(self,x):
+    def evalSMLP(self,x):
         x_i = self.encode(x)
         layer1  = np.einsum('ij,j->i', self.weight0, x_i) + self.bias0
         layer2  = np.einsum('ij,j->i', self.weight2, self.leaky_relu(layer1)) + self.bias2
         layer3  = np.einsum('ij,j->i', self.weight4, self.leaky_relu(layer2)) + self.bias4
         y_i     = np.einsum('ij,j->i', self.weight6, self.leaky_relu(layer3)) + self.bias6
+
+        if self.normed:
+            y = np.array([self.unnorm(yy,ii) for ii,yy in enumerate(y_i)])
+        else:
+            y = y_i
+
+        return y
+
+    def sigmoid(self, a):
+        return 1. / (1 + np.exp(-a))
+
+    def evalLinNet(self,x):
+        x_i = self.encode(x)
+
+        layer1  = np.einsum('ij,j->i', self.weight1, x_i) + self.bias1
+        layer2  = np.einsum('ij,j->i', self.weight2, self.sigmoid(layer1)) + self.bias2
+        layer3  = np.einsum('ij,j->i', self.weight3, self.sigmoid(layer2)) + self.bias3
+        layer4  = np.einsum('ij,j->i', self.weight4, self.sigmoid(layer3)) + self.bias4
+        layer5  = np.einsum('ij,j->i', self.weight5, self.sigmoid(layer4)) + self.bias5
+        y_i     = np.einsum('ij,j->i', self.weight6, self.sigmoid(layer5)) + self.bias6
 
         if self.normed:
             y = np.array([self.unnorm(yy,ii) for ii,yy in enumerate(y_i)])
