@@ -207,15 +207,18 @@ class TrainMod(object):
             # create a model
             if os.path.isfile(self.restartfile):
                 print('Restarting from File: {0} with NNtype: {1}'.format(self.restartfile,self.NNtype))
+                sys.stdout.flush()
                 model = GenMod.readNN(self.restartfile,NNtype=self.NNtype)
                 # model = GenMod.Net(nnpath=self.restartfile,nntype=self.NNtype,normed=True)
             else:
                 print('Could Not Find Restart File, Creating a New NN model')
+                sys.stdout.flush()
                 model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,
                     self.xmin,self.xmax,NNtype=self.NNtype)        
         else:
             # initialize the model
             print('Running New NN with NNtype: {0}'.format(self.NNtype))
+            sys.stdout.flush()
             model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,
                 self.xmin,self.xmax,NNtype=self.NNtype)
 
