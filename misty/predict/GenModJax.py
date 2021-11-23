@@ -126,15 +126,6 @@ class modpred(object):
 
     self.anns = Net(nnpath=self.nnpath,nntype=nntype,normed=normed)
 
-  def pred(self,inpars):
-    return self.anns.eval(inpars)
-
-  def getMIST(self,eep=300, mass=1.0, feh=0.0, afe=0.0, **kwargs):
-    x = [eep,mass,feh,afe]
-
-    modpred = self.pred(x)
-    # output: 'star_mass', 'log_L', 'log_Teff', log_R', 'log_g', 'log_age', '[Fe/H]', '[a/Fe]'
-
     self.modpararr = ([
         'EEP',
         'initial_Mass',
@@ -148,6 +139,15 @@ class modpred(object):
         '[Fe/H]',
         '[a/Fe]',
         'log(g)',])
+
+  def pred(self,inpars):
+    return self.anns.eval(inpars)
+
+  def getMIST(self,eep=300, mass=1.0, feh=0.0, afe=0.0, **kwargs):
+    x = [eep,mass,feh,afe]
+
+    modpred = self.pred(x)
+    # output: 'star_mass', 'log_L', 'log_Teff', log_R', 'log_g', 'log_age', '[Fe/H]', '[a/Fe]'
 
     # logTeff = 0.25 * (modpred[1] - 2.0 * modpred[2]) + np.log10(5772.0)
     # logg    = np.log10(modpred[0]) - 2.0 * modpred[2] + 4.4374
