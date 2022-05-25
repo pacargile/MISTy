@@ -90,6 +90,17 @@ class TrainMod(object):
         else:
             self.H3 = 256
 
+        # create list of in labels and out labels
+        if 'label_i' in kwargs:
+            self.label_i = kwargs['label_i']
+        else:
+            # self.label_i = ['EEP','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
+            self.label_i = ['log_age','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
+        if 'label_o'in kwargs:
+            self.label_o = kwargs['label_o']
+        else:
+            self.label_o = ['star_mass','log_L','log_Teff','log_R','log_g','[Fe/H]','[a/Fe]','EEP']
+
         # check for user defined ranges for atm models
         self.eeprange  = kwargs.get('eep',None)
         self.massrange = kwargs.get('mass',None)
@@ -120,17 +131,19 @@ class TrainMod(object):
             self.numtest,
             eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
+        # switch EEP <-> log(Age) so that we can train on age
+        self.testlabels_i = mod_test['label_i']
+        mod_test['EEP'] = self.testlabels_i[...,0].copy()
+        self.testlabels   = mod_test['label_i']
+        self.testlabels[...,0] = mod_test['log_age']
+        del mod_test['log_age']
+
         self.mod_test = Table()
-        for x in mod_test.keys():
-            if x != 'label_o':
-                self.mod_test[x] = mod_test[x]
-        self.testlabels = mod_test['label_o']
+        for x in self.label_o:
+            self.mod_test[x] = mod_test[x]
 
         print('... Finished reading in test set of models')
 
-        # create list of in labels and out labels
-        self.label_i = ['EEP','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
-        self.label_o = list(self.mod_test.keys())
 
         # determine normalization values
         self.xmin = np.array([self.mistmods.minmax[x][0] 
@@ -288,11 +301,18 @@ class TrainMod(object):
             mod_t = self.mistmods.pullmod(
                 self.numtrain,
                 norm=True,
-                excludelabels=self.testlabels,
+                excludelabels=self.testlabels_i,
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
+            # switch EEP <-> log(Age) so that we can train on age
+            trainlabels_i      = mod_t['label_i']
+            mod_t['EEP']       = trainlabels_i[...,0].copy()
+            trainlabels        = mod_t['label_i']
+            trainlabels[...,0] = mod_t['log_age']
+            del mod_t['log_age']
+
             # create tensor for input training labels
-            X_train_labels = mod_t['label_o']
+            X_train_labels = trainlabels
             X_train_Tensor = Variable(torch.from_numpy(X_train_labels).type(dtype))
             X_train_Tensor = X_train_Tensor.to(device)
 
@@ -305,11 +325,18 @@ class TrainMod(object):
             mod_v = self.mistmods.pullmod(
                 self.numtrain,
                 norm=True,
-                excludelabels=np.array(list(self.testlabels)+list(X_train_labels)),
+                excludelabels=np.array(list(self.testlabels_i)+list(trainlabels_i)),
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
+            # switch EEP <-> log(Age) so that we can train on age
+            validlabels_i      = mod_v['label_i']
+            mod_v['EEP']       = validlabels_i[...,0].copy()
+            validlabels        = mod_v['label_i']
+            validlabels[...,0] = mod_v['log_age']
+            del mod_v['log_age']
+
             # create tensor for input validation labels
-            X_valid_labels = mod_v['label_o']
+            X_valid_labels = validlabels
             X_valid_Tensor = Variable(torch.from_numpy(X_valid_labels).type(dtype))
             X_valid_Tensor = X_valid_Tensor.to(device)
 
