@@ -127,30 +127,39 @@ class modpred(object):
     self.anns = Net(nnpath=self.nnpath,nntype=nntype,normed=normed)
 
     self.modpararr = ([
-        'EEP',
+        'log(Age)',
         'initial_Mass',
         'initial_[Fe/H]',
         'initial_[a/Fe]',
-        'log(Age)',
         'Mass',
         'log(R)',
         'log(L)',
         'log(Teff)',
         '[Fe/H]',
         '[a/Fe]',
-        'log(g)',])
+        'log(g)',
+        'EEP',])
 
   def pred(self,inpars):
     return self.anns.eval(inpars)
 
-  def getMIST(self,eep=300, mass=1.0, feh=0.0, afe=0.0, **kwargs):
-    x = [eep,mass,feh,afe]
+  def getMIST(self,logage=9.5, mass=1.0, feh=0.0, afe=0.0, **kwargs):
+    x = np.asarray([logage,mass,feh,afe])
 
     modpred = self.pred(x)
-    # output: 'star_mass', 'log_L', 'log_Teff', log_R', 'log_g', 'log_age', '[Fe/H]', '[a/Fe]'
+    # output: 'star_mass', 'log_L', 'log_Teff', log_R', 'log_g', '[Fe/H]', '[a/Fe]', 'EEP'
 
     # logTeff = 0.25 * (modpred[1] - 2.0 * modpred[2]) + np.log10(5772.0)
     # logg    = np.log10(modpred[0]) - 2.0 * modpred[2] + 4.4374
 
-    out = [eep,mass,feh,afe,modpred[5],modpred[0],modpred[3],modpred[1],modpred[2],modpred[6],modpred[7],modpred[4]]
+    out = {}
+    out['log_age'] = logage
+    out['initial_masss'] = mass
+    out['initial_[Fe/H]'] = feh
+    out['initial_[a/Fe]'] = afe
+
+    for ii,x in enumerate(self.anns.label_out):
+        out[x] = modpred[ii]
+
+    # out = [logage,mass,feh,afe,modpred[5],modpred[0],modpred[3],modpred[1],modpred[2],modpred[6],modpred[7],modpred[4]]
     return out
