@@ -167,7 +167,7 @@ class readmist(object):
                 # Agewgt_o.append(mod_o['Agewgt'][mod_nearest])
 
         outdict = {}
-        outdict['label_o']     = np.array(label_o)
+        outdict['label_i']     = np.array(label_o)
         outdict['star_mass']   = np.array(starmass_o)
         outdict['log_L']      = np.array(logL_o)
         outdict['log_Teff']   = np.array(logTeff_o)
@@ -329,7 +329,7 @@ class readmist(object):
 
 
         outdict = {}
-        outdict['label_o']     = np.array(label_o)
+        outdict['label_i']     = np.array(label_o)
         outdict['star_mass']   = np.array(starmass_o).T
         outdict['log_L']      = np.array(logL_o).T
         outdict['log_Teff']   = np.array(logTeff_o).T
