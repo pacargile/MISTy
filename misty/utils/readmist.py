@@ -116,6 +116,7 @@ class readmist(object):
         logage_o = []
         FeHs_o = []
         aFes_o = []
+        eep_o = []
         # Agewgt_o = []
 
 
@@ -154,6 +155,7 @@ class readmist(object):
                 logage_o.append(self.normf(mod_o['log_age'][mod_nearest],'log_age'))
                 FeHs_o.append(self.normf(mod_o['[Fe/H]'][mod_nearest],'[Fe/H]'))
                 aFes_o.append(self.normf(mod_o['[a/Fe]'][mod_nearest],'[a/Fe]'))
+                eep_o.append(self.normf(mod_o['EEP'][mod_nearest],'EEP'))
                 # Agewgt_o.append(self.normf(mod_o['Agewgt'][mod_nearest],'Agewgt'))
             else:
                 starmass_o.append(mod_o['star_mass'][mod_nearest])
@@ -164,18 +166,20 @@ class readmist(object):
                 logage_o.append(mod_o['log_age'][mod_nearest])
                 FeHs_o.append(mod_o['[Fe/H]'][mod_nearest])
                 aFes_o.append(mod_o['[a/Fe]'][mod_nearest])
+                eep_o.append(mod_o['EEP'][mod_nearest])
                 # Agewgt_o.append(mod_o['Agewgt'][mod_nearest])
 
         outdict = {}
-        outdict['label_i']     = np.array(label_o)
-        outdict['star_mass']   = np.array(starmass_o)
+        outdict['label_i']    = np.array(label_o)
+        outdict['star_mass']  = np.array(starmass_o)
         outdict['log_L']      = np.array(logL_o)
         outdict['log_Teff']   = np.array(logTeff_o)
         outdict['log_R']      = np.array(logR_o)
         outdict['log_g']      = np.array(logg_o)
         outdict['log_age']    = np.array(logage_o)
-        outdict['[Fe/H]']      = np.array(FeHs_o)
-        outdict['[a/Fe]']      = np.array(aFes_o)
+        outdict['[Fe/H]']     = np.array(FeHs_o)
+        outdict['[a/Fe]']     = np.array(aFes_o)
+        outdict['EEP']        = np.array(eep_o)
         # outdict['Agewgt']      = np.array(Agewgt_o)
 
         return outdict
@@ -219,6 +223,7 @@ class readmist(object):
         logage_o = []
         FeHs_o = []
         aFes_o = []
+        eep_o = []
         # Agewgt_o = []
 
         starttimef = datetime.now()
@@ -289,6 +294,7 @@ class readmist(object):
                     logage_oo   = mod_o['log_age'][ind].item()
                     FeHs_oo     = mod_o['[Fe/H]'][ind].item()
                     aFes_oo     = mod_o['[a/Fe]'][ind].item()
+                    eep_oo      = mod_o['EEP'][ind].item()
                     # Agewgt_oo   = mod_o['Agewgt'][ind].item()
                 except ValueError:
                     print(label_i)
@@ -314,6 +320,7 @@ class readmist(object):
                     logage_o.append(self.normf(logage_oo,'log_age'))
                     FeHs_o.append(self.normf(FeHs_oo,'[Fe/H]'))
                     aFes_o.append(self.normf(aFes_oo,'[a/Fe]'))
+                    eep_o.append(self.normf(eep_oo,'EEP'))
                     # Agewgt_o.append(self.normf(Agewgt_oo,'Agewgt'))
                 else:
                     starmass_o.append(starmass_oo)
@@ -324,20 +331,22 @@ class readmist(object):
                     logage_o.append(logage_oo)
                     FeHs_o.append(FeHs_oo)
                     aFes_o.append(aFes_oo)
+                    eep_o.append(eep_oo)
                     # Agewgt_o.append(Agewgt_oo)
                 break
 
 
         outdict = {}
-        outdict['label_i']     = np.array(label_o)
-        outdict['star_mass']   = np.array(starmass_o).T
+        outdict['label_i']    = np.array(label_o)
+        outdict['star_mass']  = np.array(starmass_o).T
         outdict['log_L']      = np.array(logL_o).T
         outdict['log_Teff']   = np.array(logTeff_o).T
         outdict['log_R']      = np.array(logR_o).T
         outdict['log_g']      = np.array(logg_o).T
         outdict['log_age']    = np.array(logage_o).T
-        outdict['[Fe/H]']      = np.array(FeHs_o).T
-        outdict['[a/Fe]']      = np.array(aFes_o).T
+        outdict['[Fe/H]']     = np.array(FeHs_o).T
+        outdict['[a/Fe]']     = np.array(aFes_o).T
+        outdict['EEP']        = np.array(eep_o).T
         # outdict['Agewgt']      = np.array(Agewgt_o).T
 
         return outdict

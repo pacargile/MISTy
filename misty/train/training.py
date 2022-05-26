@@ -133,8 +133,7 @@ class TrainMod(object):
 
         # switch EEP <-> log(Age) so that we can train on age
         self.testlabels_i = mod_test['label_i']
-        mod_test['EEP'] = self.testlabels_i[...,0].copy()
-        self.testlabels   = mod_test['label_i']
+        self.testlabels   = mod_test['label_i'].copy()
         self.testlabels[...,0] = mod_test['log_age']
         del mod_test['log_age']
 
@@ -193,6 +192,10 @@ class TrainMod(object):
         sys.stdout.flush()
 
         net = self()
+
+        tottimeend = datetime.now()
+
+        print('Finished Training at {0} ({1})'.format(tottimeend,tottimeend-tottimestart))
         if type(net[0]) == type(None):
             return net
 
@@ -306,8 +309,7 @@ class TrainMod(object):
 
             # switch EEP <-> log(Age) so that we can train on age
             trainlabels_i      = mod_t['label_i']
-            mod_t['EEP']       = trainlabels_i[...,0].copy()
-            trainlabels        = mod_t['label_i']
+            trainlabels        = mod_t['label_i'].copy()
             trainlabels[...,0] = mod_t['log_age']
             del mod_t['log_age']
 
@@ -330,8 +332,7 @@ class TrainMod(object):
 
             # switch EEP <-> log(Age) so that we can train on age
             validlabels_i      = mod_v['label_i']
-            mod_v['EEP']       = validlabels_i[...,0].copy()
-            validlabels        = mod_v['label_i']
+            validlabels        = mod_v['label_i'].copy()
             validlabels[...,0] = mod_v['log_age']
             del mod_v['log_age']
 
@@ -344,6 +345,8 @@ class TrainMod(object):
             Y_valid = np.array([mod_v[x] for x in self.label_o]).T
             Y_valid_Tensor = Variable(torch.from_numpy(Y_valid).type(dtype), requires_grad=False)
             Y_valid_Tensor = Y_valid_Tensor.to(device)
+
+            print('... Pulling Training & Validation Took {0}'.format(datetime.now()-epochtime))
 
             cc = 0
             for iter_i in range(int(self.numsteps)):
@@ -443,6 +446,7 @@ class TrainMod(object):
                         'model/{0}'.format(kk),
                         data=model.state_dict()[kk].cpu().numpy(),
                         compression='gzip')
+            print('Finished Epoch {0} @ {1} ({2})'.format(epoch_i+1, datetime.now(),datetime.now() - epochtime))
 
 
         print('Finished training model, took: {0}'.format(
