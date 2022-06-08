@@ -420,11 +420,11 @@ class TrainMod(object):
                         sys.stdout.flush()                      
 
                     fig,ax = plt.subplots(1,1)
-                    ax.plot(iter_arr,np.log10(training_loss),ls='-',lw=1.0,alpha=0.75,c='C0',label='Training')
-                    ax.plot(iter_arr,np.log10(validation_loss),ls='-',lw=1.0,alpha=0.75,c='C3',label='Validation')
+                    ax.plot(iter_arr,np.log10(training_loss/self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C0',label='Training')
+                    ax.plot(iter_arr,np.log10(validation_loss/self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C3',label='Validation')
                     ax.legend()
                     ax.set_xlabel('Iteration')
-                    ax.set_ylabel('log(L1 Loss)')
+                    ax.set_ylabel('log(L1 Loss per model)')
                     fig.savefig('loss_epoch{0}.png'.format(epoch_i+1),dpi=150)
                     plt.close(fig)
 
