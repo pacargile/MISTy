@@ -120,6 +120,9 @@ class TrainMod(object):
         # type of NN to train
         self.NNtype = kwargs.get('NNtype','SMLP')
 
+        # the output predictions are normed
+        self.norm = kwargs.get('norm',False)
+
         # initialzie class to pull models
         print('... Pulling a first set of models for test set')
         print('... Reading {0} test models from {1}'.format(self.numtest,self.mistpath))
@@ -305,7 +308,7 @@ class TrainMod(object):
             # pull training data
             mod_t = self.mistmods.pullmod(
                 self.numtrain,
-                norm=False,
+                norm=self.norm,
                 excludelabels=self.testlabels_i,
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
@@ -328,7 +331,7 @@ class TrainMod(object):
             # pull validataion data
             mod_v = self.mistmods.pullmod(
                 self.numtrain,
-                norm=False,
+                norm=self.norm,
                 excludelabels=np.array(list(self.testlabels_i)+list(trainlabels_i)),
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
