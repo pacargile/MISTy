@@ -129,6 +129,7 @@ class TrainMod(object):
         # pull a quick set of test models to determine general properties
         mod_test = self.mistmods.pullmod(
             self.numtest,
+            norm=False,
             eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
         # switch EEP <-> log(Age) so that we can train on age
@@ -304,7 +305,7 @@ class TrainMod(object):
             # pull training data
             mod_t = self.mistmods.pullmod(
                 self.numtrain,
-                # norm=True,
+                norm=False,
                 excludelabels=self.testlabels_i,
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
@@ -327,7 +328,7 @@ class TrainMod(object):
             # pull validataion data
             mod_v = self.mistmods.pullmod(
                 self.numtrain,
-                # norm=True,
+                norm=False,
                 excludelabels=np.array(list(self.testlabels_i)+list(trainlabels_i)),
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
