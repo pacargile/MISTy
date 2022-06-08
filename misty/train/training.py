@@ -304,7 +304,7 @@ class TrainMod(object):
             # pull training data
             mod_t = self.mistmods.pullmod(
                 self.numtrain,
-                norm=True,
+                # norm=True,
                 excludelabels=self.testlabels_i,
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
@@ -327,7 +327,7 @@ class TrainMod(object):
             # pull validataion data
             mod_v = self.mistmods.pullmod(
                 self.numtrain,
-                norm=True,
+                # norm=True,
                 excludelabels=np.array(list(self.testlabels_i)+list(trainlabels_i)),
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
