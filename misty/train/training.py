@@ -304,6 +304,8 @@ class TrainMod(object):
             iter_arr = []
             training_loss =[]
             validation_loss = []
+            medres_loss = []
+            maxres_loss = []
 
             # pull training data
             mod_t = self.mistmods.pullmod(
@@ -392,17 +394,26 @@ class TrainMod(object):
                     loss = optimizer.step(closure)
 
                 # evaluate the validation set
-                if iter_i % 25 == 0:
+                if iter_i % 100 == 0:
                     perm_valid = torch.randperm(self.numtrain)
                     if str(device) != 'cpu':
                         perm_valid = perm_valid.cuda()
 
                     loss_valid = 0
+                    medres = 0
+                    maxres = 0
                     for j in range(nbatches):
                         idx = perm[t * self.batchsize : (t+1) * self.batchsize]
 
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
+
+                        residual = torch.abs(Y_pred_valid_Tensor-Y_valid_Tensor[idx])
+                        medres_i,maxres_i = float(residual.median()),float(residual.max())
+                        if medres_i > medres:
+                            medres = medres_i
+                        if maxres_i > maxres:
+                            maxres = maxres_i
 
                     loss_valid /= nbatches
 
@@ -412,21 +423,33 @@ class TrainMod(object):
                     iter_arr.append(iter_i)
                     training_loss.append(loss_data)
                     validation_loss.append(loss_valid_data)
+                    medres_loss.append(medres)
+                    maxres_loss.append(maxres)
+
+                    fig,ax = plt.subplots(nrows=3,ncols=1)
+                    ax[0].plot(iter_arr,np.log10(training_loss/self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C0',label='Training')
+                    ax[0].plot(iter_arr,np.log10(validation_loss/self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C3',label='Validation')
+                    ax[0].legend()
+                    ax[0].set_xlabel('Iteration')
+                    ax[0].set_ylabel('log(L1 Loss per model)')
+
+                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=1.0,alpha=0.75,c='C4',label='max')
+                    ax[1].set_ylabel('log(|Max Residual|)')
+
+                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=1.0,alpha=0.75,c='C2',label='median')
+                    ax[2].set_xlabel('Iteration')
+                    ax[2].set_ylabel('log(|Med Residual|)')
+
+                    fig.savefig('misty_loss_epoch{0}.png'.format(epoch_i+1),dpi=150)
+                    plt.close(fig)
+
                     if iter_i % 500 == 0.0:
                         print (
                             '--> Ep: {0:d} -- Iter {1:d}/{2:d} -- Time/step: {3} -- Train Loss: {4:.6f} -- Valid Loss: {5:.6f}'.format(
                             int(epoch_i+1),int(iter_i+1),int(self.numsteps), datetime.now()-steptime, loss_data, loss_valid_data)
                         )
-                        sys.stdout.flush()                      
+                    sys.stdout.flush()                      
 
-                    fig,ax = plt.subplots(1,1)
-                    ax.plot(iter_arr,np.log10(training_loss/self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C0',label='Training')
-                    ax.plot(iter_arr,np.log10(validation_loss/self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C3',label='Validation')
-                    ax.legend()
-                    ax.set_xlabel('Iteration')
-                    ax.set_ylabel('log(L1 Loss per model)')
-                    fig.savefig('loss_epoch{0}.png'.format(epoch_i+1),dpi=150)
-                    plt.close(fig)
 
                 # # check if network has converged
                 # if np.abs(np.nan_to_num(loss_valid_data)-np.nan_to_num(current_loss))/np.abs(loss_valid_data) < 0.01:
