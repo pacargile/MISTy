@@ -118,7 +118,7 @@ class TrainMod(object):
         self.mistpath  = kwargs.get('mistpath',None)
 
         # type of NN to train
-        self.NNtype = kwargs.get('NNtype','SMLP')
+        self.NNtype = kwargs.get('NNtype','LinNet')
 
         # the output predictions are normed
         self.norm = kwargs.get('norm',False)
@@ -315,7 +315,8 @@ class TrainMod(object):
             # switch EEP <-> log(Age) so that we can train on age
             trainlabels_i      = mod_t['label_i']
             trainlabels        = mod_t['label_i'].copy()
-            trainlabels[...,0] = mod_t['log_age']
+            unnorm_logage_t = (mod_t['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+            trainlabels[...,0] = unnorm_logage_t
             del mod_t['log_age']
 
             # create tensor for input training labels
@@ -338,7 +339,8 @@ class TrainMod(object):
             # switch EEP <-> log(Age) so that we can train on age
             validlabels_i      = mod_v['label_i']
             validlabels        = mod_v['label_i'].copy()
-            validlabels[...,0] = mod_v['log_age']
+            unnorm_logage_v = (mod_v['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+            validlabels[...,0] = unnorm_logage_v
             del mod_v['log_age']
 
             # create tensor for input validation labels
