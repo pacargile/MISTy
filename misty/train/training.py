@@ -317,7 +317,10 @@ class TrainMod(object):
             # switch EEP <-> log(Age) so that we can train on age
             trainlabels_i      = mod_t['label_i']
             trainlabels        = mod_t['label_i'].copy()
-            unnorm_logage_t = (mod_t['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+            if self.norm:
+                unnorm_logage_t = (mod_t['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+            else:
+                unnorm_logage_t = mod_t['log_age']
             trainlabels[...,0] = unnorm_logage_t
             del mod_t['log_age']
 
@@ -341,7 +344,10 @@ class TrainMod(object):
             # switch EEP <-> log(Age) so that we can train on age
             validlabels_i      = mod_v['label_i']
             validlabels        = mod_v['label_i'].copy()
-            unnorm_logage_v = (mod_v['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+            if self.norm:
+                unnorm_logage_v = (mod_v['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+            else:
+                unnorm_logage_v = mod_v['log_age']
             validlabels[...,0] = unnorm_logage_v
             del mod_v['log_age']
 
@@ -407,7 +413,7 @@ class TrainMod(object):
 
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
-
+                        
                         residual = torch.abs(Y_pred_valid_Tensor-Y_valid_Tensor[idx])
                         medres_i,maxres_i = float(residual.median()),float(residual.max())
                         if medres_i > medres:
@@ -426,11 +432,10 @@ class TrainMod(object):
                     medres_loss.append(medres)
                     maxres_loss.append(maxres)
 
-                    fig,ax = plt.subplots(nrows=3,ncols=1)
-                    ax[0].plot(iter_arr,np.log10(training_loss/self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C0',label='Training')
-                    ax[0].plot(iter_arr,np.log10(validation_loss/self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C3',label='Validation')
+                    fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
+                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C0',label='Training')
+                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C3',label='Validation')
                     ax[0].legend()
-                    ax[0].set_xlabel('Iteration')
                     ax[0].set_ylabel('log(L1 Loss per model)')
 
                     ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=1.0,alpha=0.75,c='C4',label='max')
