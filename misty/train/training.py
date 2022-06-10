@@ -381,12 +381,7 @@ class TrainMod(object):
 
                         # Forward pass: compute predicted y by passing x to the model.
                         Y_pred_train_Tensor = model(X_train_Tensor[idx])
-
-                        print(X_train_Tensor[idx][0])
-                        print(Y_pred_train_Tensor[0])
-                        print(Y_train_Tensor[idx][0])
-                        print('')
-
+                        
                         # Compute and print loss.
                         loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
 
