@@ -267,13 +267,13 @@ class TrainMod(object):
 
 
         # initialize the loss function
-        loss_fn = torch.nn.MSELoss(reduction='sum')
+        loss_fn = torch.nn.MSELoss(reduction='mean')
         # loss_fn = torch.nn.SmoothL1Loss(reduction='sum')
         # loss_fn = torch.nn.KLDivLoss(size_average=False)
         # loss_fn = torch.nn.L1Loss(reduction = 'mean')
 
         # initialize the optimizer
-        learning_rate = 1e-4
+        learning_rate = 1e-2
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         # optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
         optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate)
@@ -382,6 +382,11 @@ class TrainMod(object):
                         # Forward pass: compute predicted y by passing x to the model.
                         Y_pred_train_Tensor = model(X_train_Tensor[idx])
 
+                        print(X_train_Tensor[idx][0])
+                        print(Y_pred_train_Tensor[0])
+                        print(Y_train_Tensor[idx][0])
+                        print('')
+
                         # Compute and print loss.
                         loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
 
@@ -413,7 +418,7 @@ class TrainMod(object):
 
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
-                        
+
                         residual = torch.abs(Y_pred_valid_Tensor-Y_valid_Tensor[idx])
                         medres_i,maxres_i = float(residual.median()),float(residual.max())
                         if medres_i > medres:
@@ -445,7 +450,7 @@ class TrainMod(object):
                     ax[2].set_xlabel('Iteration')
                     ax[2].set_ylabel('log(|Med Residual|)')
 
-                    fig.savefig('misty_loss_epoch{0}.png'.format(epoch_i+1),dpi=150)
+                    fig.savefig('{0}_loss_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
                     plt.close(fig)
 
                     if iter_i % 500 == 0.0:
