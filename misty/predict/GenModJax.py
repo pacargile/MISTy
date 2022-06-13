@@ -101,7 +101,7 @@ class Net(object):
     def evalLinNet(self,x):
         x_i = self.encode(x)
 
-        layer1  = np.einsum('ij,j->i', self.weight1, x_i) + self.bias1
+        layer1  = np.einsum('ij,j->i', self.weight1, x_i)                  + self.bias1
         layer2  = np.einsum('ij,j->i', self.weight2, self.sigmoid(layer1)) + self.bias2
         layer3  = np.einsum('ij,j->i', self.weight3, self.sigmoid(layer2)) + self.bias3
         layer4  = np.einsum('ij,j->i', self.weight4, self.sigmoid(layer3)) + self.bias4
