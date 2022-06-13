@@ -418,11 +418,14 @@ class TrainMod(object):
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
 
-                        if iter_i % 500 == 0:
+                        if iter_i % 5000 == 0:
+                            print('--> Testing the model @ {}:'.format(iter_i))
+                            print('      Input Labels:')
                             print(X_valid_Tensor[idx][0])
+                            print('      Training Labels:')
                             print(Y_valid_Tensor[idx][0])
+                            print('      Predicted Labels:')
                             print(Y_pred_valid_Tensor[0])
-                            print('')
 
                         residual = torch.abs(Y_pred_valid_Tensor-Y_valid_Tensor[idx])
                         medres_i,maxres_i = float(residual.median()),float(residual.max())
