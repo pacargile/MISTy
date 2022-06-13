@@ -123,6 +123,9 @@ class TrainMod(object):
         # the output predictions are normed
         self.norm = kwargs.get('norm',False)
 
+        # starting learning rate
+        self.lr = kwargs.get('lr',1E-4)
+
         # initialzie class to pull models
         print('... Pulling a first set of models for test set')
         print('... Reading {0} test models from {1}'.format(self.numtest,self.mistpath))
@@ -267,13 +270,14 @@ class TrainMod(object):
 
 
         # initialize the loss function
-        loss_fn = torch.nn.MSELoss(reduction='mean')
+        loss_fn = torch.nn.MSELoss(reduction='sum')
         # loss_fn = torch.nn.SmoothL1Loss(reduction='sum')
         # loss_fn = torch.nn.KLDivLoss(size_average=False)
         # loss_fn = torch.nn.L1Loss(reduction = 'mean')
 
         # initialize the optimizer
-        learning_rate = 1e-2
+        learning_rate = self.lr
+
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         # optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
         optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate)
@@ -381,7 +385,7 @@ class TrainMod(object):
 
                         # Forward pass: compute predicted y by passing x to the model.
                         Y_pred_train_Tensor = model(X_train_Tensor[idx])
-                        
+
                         # Compute and print loss.
                         loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
 
