@@ -418,7 +418,7 @@ class TrainMod(object):
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
 
-                        if iter_i % 5000 == 0:
+                        if iter_i % 50000 == 0:
                             print('--> Testing the model @ {}:'.format(iter_i))
                             print('      Input Labels:')
                             print(X_valid_Tensor[idx][0])
