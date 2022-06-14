@@ -117,7 +117,7 @@ class Net(object):
 
 class modpred(object):
   """docstring for modpred"""
-  def __init__(self, nnpath=None, nntype='SMLP', normed=False):
+  def __init__(self, nnpath=None, nntype='LinNet', normed=False):
     super(modpred, self).__init__()
     if nnpath != None:
       self.nnpath = nnpath

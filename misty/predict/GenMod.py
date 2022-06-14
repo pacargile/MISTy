@@ -16,43 +16,43 @@ from datetime import datetime
 
 from ..utils import NNmodels
 
-def defmod(D_in,H1,H2,H3,D_out,xmin,xmax,NNtype='SMLP'):
-    if NNtype == 'ResNet':
+def defmod(D_in,H1,H2,H3,D_out,xmin,xmax,nntype='LinNet'):
+    if nntype == 'ResNet':
         return NNmodels.ResNet(D_in,H1,H2,D_out,xmin,xmax)
-    elif NNtype == 'LinNet':
+    elif nntype == 'LinNet':
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out,xmin,xmax)
     else:
         return NNmodels.SMLP(D_in,H1,H2,H3,D_out,xmin,xmax)
 
-def readNN(nnpath,NNtype='SMLP'):
+def readNN(nnpath,nntype='LinNet'):
     # read in the file for the previous run 
     nnh5 = h5py.File(nnpath,'r')
 
     xmin  = nnh5['xmin'][()]
     xmax  = nnh5['xmax'][()]
 
-    if (NNtype == 'SMLP'):
+    if (nntype == 'SMLP'):
         D_in  = nnh5['model/features.0.weight'].shape[1]
         H1    = nnh5['model/features.0.weight'].shape[0]
         H2    = nnh5['model/features.2.weight'].shape[0]
         H3    = nnh5['model/features.4.weight'].shape[0]
         D_out = nnh5['model/features.6.weight'].shape[0]
 
-    if (NNtype == 'LinNet'):
+    if (nntype == 'LinNet'):
         D_in  = nnh5['model/lin1.weight'].shape[1]
         H1    = nnh5['model/lin1.weight'].shape[0]
         H2    = nnh5['model/lin4.weight'].shape[0]
         H3    = nnh5['model/lin5.weight'].shape[0]
         D_out = nnh5['model/lin6.weight'].shape[0]
     
-    if NNtype == 'ResNet':
+    if nntype == 'ResNet':
         D_in      = nnh5['model/ConvTranspose1d.weight'].shape[1]
         H1        = nnh5['model/lin1.weight'].shape[0]
         H2        = nnh5['model/lin2.weight'].shape[0]
         outputdim = len([x_i for x_i in list(nnh5['model'].keys()) if 'weight' in x_i])
         D_out     = nnh5['model/lin{0}.weight'.format(outputdim)].shape[0]
     
-    model = defmod(D_in,H1,H2,H3,D_out,xmin,xmax,NNtype=NNtype)
+    model = defmod(D_in,H1,H2,H3,D_out,xmin,xmax,nntype=nntype)
 
     model.D_in = D_in
     model.H1 = H1
@@ -92,9 +92,9 @@ class ANN(object):
         self.ymin = th5['ymin'][()]
         self.ymax = th5['ymax'][()]
 
-    self.NNtype = kwargs.get('NNtype','SMLP')
+    self.nntype = kwargs.get('nntype','LinNet')
 
-    self.model = readNN(self.nnpath,NNtype=self.NNtype)
+    self.model = readNN(self.nnpath,nntype=self.nntype)
 
   def eval(self,x):
     if isinstance(x,list):
@@ -117,14 +117,14 @@ class ANN(object):
 
 class modpred(object):
   """docstring for modpred"""
-  def __init__(self, nnpath=None, NNtype='SMLP', normed=False):
+  def __init__(self, nnpath=None, nntype='LinNet', normed=False):
     super(modpred, self).__init__()
     if nnpath != None:
       self.nnpath = nnpath
     else:
       self.nnpath  = misty.__abspath__+'data/ANN/mistyNN.h5'
 
-    self.anns = ANN(nnpath=self.nnpath,NNtype=NNtype,normed=normed)
+    self.anns = ANN(nnpath=self.nnpath,nntype=nntype,normed=normed)
 
   def pred(self,inpars):
     return self.anns.eval(inpars)
