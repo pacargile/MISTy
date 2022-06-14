@@ -247,7 +247,6 @@ class TrainMod(object):
 
         # set up model to start training
         model.to(device)
-        model.train()
 
         # initialize the output file
         with h5py.File('{0}'.format(self.outfilename),'w') as outfile_i:
@@ -369,6 +368,7 @@ class TrainMod(object):
 
             cc = 0
             for iter_i in range(int(self.numsteps)):
+                model.train()
 
                 itertime = datetime.now()
 
@@ -386,13 +386,16 @@ class TrainMod(object):
                         # Forward pass: compute predicted y by passing x to the model.
                         Y_pred_train_Tensor = model(X_train_Tensor[idx])
 
+                        # print('t',Y_train_Tensor[idx][:10])
+                        # print('p',Y_pred_train_Tensor[:10])
+
                         # Compute and print loss.
                         loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
 
                         # Backward pass: compute gradient of the loss with respect to model parameters
                         optimizer.zero_grad()
                         loss.backward(retain_graph=False)
-                        optimizer.step()
+                        # optimizer.step()
                         
                         if np.isnan(loss.item()):
                             print('PRED TRAIN TENSOR',Y_pred_train_Tensor)
@@ -404,7 +407,9 @@ class TrainMod(object):
                     loss = optimizer.step(closure)
 
                 # evaluate the validation set
-                if iter_i % 100 == 0:
+                if iter_i % 10 == 0:
+                    model.eval()
+
                     perm_valid = torch.randperm(self.numtrain)
                     if str(device) != 'cpu':
                         perm_valid = perm_valid.cuda()
@@ -418,14 +423,14 @@ class TrainMod(object):
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
 
-                        if (iter_i % 50000 == 0) and (iter_i != 0):
+                        if (iter_i % 5000 == 0) and (iter_i != 0):
                             print('--> Testing the model @ {}:'.format(iter_i))
                             print('      Input Labels:')
-                            print(X_valid_Tensor[idx][0])
+                            print(X_valid_Tensor[idx][:3])
                             print('      Training Labels:')
-                            print(Y_valid_Tensor[idx][0])
+                            print(Y_valid_Tensor[idx][:3])
                             print('      Predicted Labels:')
-                            print(Y_pred_valid_Tensor[0])
+                            print(Y_pred_valid_Tensor[:3])
 
                         residual = torch.abs(Y_pred_valid_Tensor-Y_valid_Tensor[idx])
                         medres_i,maxres_i = float(residual.median()),float(residual.max())
