@@ -123,6 +123,9 @@ class TrainMod(object):
         # the output predictions are normed
         self.norm = kwargs.get('norm',False)
 
+        # use eepprior in training
+        self.eepprior = kwargs.get('eepprior',False)
+
         # starting learning rate
         self.lr = kwargs.get('lr',1E-4)
 
@@ -136,6 +139,7 @@ class TrainMod(object):
         mod_test = self.mistmods.pullmod(
             self.numtest,
             norm=False,
+            eepprior=False,
             eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
         # switch EEP <-> log(Age) so that we can train on age
@@ -314,6 +318,7 @@ class TrainMod(object):
             mod_t = self.mistmods.pullmod(
                 self.numtrain,
                 norm=self.norm,
+                eepprior=self.eepprior,                
                 excludelabels=self.testlabels_i,
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
@@ -341,6 +346,7 @@ class TrainMod(object):
             mod_v = self.mistmods.pullmod(
                 self.numtrain,
                 norm=self.norm,
+                eepprior=self.eepprior,
                 excludelabels=np.array(list(self.testlabels_i)+list(trainlabels_i)),
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
