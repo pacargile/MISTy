@@ -401,7 +401,6 @@ class TrainMod(object):
                         # Backward pass: compute gradient of the loss with respect to model parameters
                         optimizer.zero_grad()
                         loss.backward(retain_graph=False)
-                        # optimizer.step()
                         
                         if np.isnan(loss.item()):
                             print('PRED TRAIN TENSOR',Y_pred_train_Tensor)
