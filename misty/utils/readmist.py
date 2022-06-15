@@ -212,6 +212,8 @@ class readmist(object):
 
         norm = kwargs.get('norm',False)
 
+        eepprior = kwargs.get('eepprior',False)
+
         # create arrays for outputs
         label_o = []
         #
@@ -257,13 +259,15 @@ class readmist(object):
                     (self.massarr <= massrange[1])
                     )]
 
-                # draw eep with weighting towards short lived phases 
-                # since that is where the isochrones change most
-                ueeparr = np.unique(eeparr)
-                peeparr = self.Peep(ueeparr)
-                peeparr = peeparr/peeparr.sum()
-                eep_i = np.random.choice(ueeparr,p=peeparr)
-                # eep_i  = np.random.choice(np.unique(eeparr),p=None)
+                if eepprior:
+                    # draw eep with weighting towards short lived phases 
+                    # since that is where the isochrones change most
+                    ueeparr = np.unique(eeparr)
+                    peeparr = self.Peep(ueeparr)
+                    peeparr = peeparr/peeparr.sum()
+                    eep_i = np.random.choice(ueeparr,p=peeparr)
+                else:
+                    eep_i  = np.random.choice(np.unique(eeparr),p=None)
                 mass_i = np.random.choice(np.unique(massarr),p=None)
 
                 # assemble set of input labels 
