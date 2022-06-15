@@ -259,11 +259,11 @@ class readmist(object):
 
                 # draw eep with weighting towards short lived phases 
                 # since that is where the isochrones change most
-                # ueeparr = np.unique(eeparr)
-                # peeparr = self.Peep(ueeparr)
-                # peeparr = peeparr/peeparr.sum()
-                # eep_i = np.random.choice(ueeparr,p=peeparr)
-                eep_i  = np.random.choice(np.unique(eeparr),p=None)
+                ueeparr = np.unique(eeparr)
+                peeparr = self.Peep(ueeparr)
+                peeparr = peeparr/peeparr.sum()
+                eep_i = np.random.choice(ueeparr,p=peeparr)
+                # eep_i  = np.random.choice(np.unique(eeparr),p=None)
                 mass_i = np.random.choice(np.unique(massarr),p=None)
 
                 # assemble set of input labels 
