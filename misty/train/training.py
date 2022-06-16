@@ -17,7 +17,6 @@ elif mpsbool:
 else:
     device = torch.device('cpu')
 
-
 if device == 'cuda':
     dtype = torch.cuda.FloatTensor
 else:
@@ -151,6 +150,8 @@ class TrainMod(object):
 
         # starting learning rate
         self.lr = kwargs.get('lr',1E-4)
+
+        print('... Running Training on Device: {}'.format(device))
 
         # initialzie class to pull models
         print('... Pulling a first set of models for test set')
