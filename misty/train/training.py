@@ -1,10 +1,33 @@
 import torch
 from torch import nn
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-if str(device) != 'cpu':
-  dtype = torch.cuda.FloatTensor
+
+try:
+    cudabool = torch.has_cuda
+except:
+    cudabool = False
+try:
+    mpsbool = torch.has_mps
+except:
+    mpsbool = False
+
+if cudabool:
+    device = torch.device('cuda')
+elif mpsbool:
+    device = torch.device('mps')
 else:
-  dtype = torch.FloatTensor
+    device = torch.device('cpu')
+
+
+if device == 'cuda':
+    dtype = torch.cuda.FloatTensor
+else:
+    dtype = torch.FloatTensor
+
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# if str(device) != 'cpu':
+#   dtype = torch.cuda.FloatTensor
+# else:
+#   dtype = torch.FloatTensor
 from torch.autograd import Variable
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau
@@ -217,7 +240,7 @@ class TrainMod(object):
         # start a timer
         starttime = datetime.now()
 
-        if str(device) != 'cpu':
+        if str(device) == 'cuda':
             # determine if this is running within mp
             if len(multiprocessing.current_process()._identity) > 0:
                 torch.cuda.set_device(multiprocessing.current_process()._identity[0]-1)
@@ -381,7 +404,7 @@ class TrainMod(object):
                 perm = torch.randperm(self.numtrain)
 
                 if str(device) != 'cpu':
-                    perm = perm.cuda()
+                    perm = perm.to(device)
 
                 for t in range(nbatches):
                     steptime = datetime.now()
@@ -417,7 +440,7 @@ class TrainMod(object):
 
                     perm_valid = torch.randperm(self.numtrain)
                     if str(device) != 'cpu':
-                        perm_valid = perm_valid.cuda()
+                        perm_valid = perm_valid.to(device)
 
                     loss_valid = 0
                     medres = 0
