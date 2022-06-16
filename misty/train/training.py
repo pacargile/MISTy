@@ -12,8 +12,8 @@ except:
 
 if cudabool:
     device = torch.device('cuda')
-elif mpsbool:
-    device = torch.device('mps')
+# elif mpsbool:
+#     device = torch.device('mps')
 else:
     device = torch.device('cpu')
 
@@ -452,7 +452,7 @@ class TrainMod(object):
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
 
-                        if (iter_i % 10000 == 0) and (iter_i != 0):
+                        if (iter_i % 1000 == 0) and (iter_i != 0):
                             print('--> Testing the model @ {}:'.format(iter_i))
                             print('      Input Labels:')
                             print(X_valid_Tensor[idx][:3])
@@ -495,7 +495,7 @@ class TrainMod(object):
                     fig.savefig('{0}_loss_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
                     plt.close(fig)
 
-                    if iter_i % 1000 == 0.0:
+                    if iter_i % 100 == 0.0:
                         print (
                             '--> Ep: {0:d} -- Iter {1:d}/{2:d} -- Time/iter: {3} -- Time: {4} -- Train Loss: {5:.6f} -- Valid Loss: {6:.6f}'.format(
                             int(epoch_i+1),int(iter_i+1),int(self.numsteps), datetime.now()-itertime, datetime.now(), loss_data, loss_valid_data)
