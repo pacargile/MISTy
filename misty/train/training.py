@@ -1,32 +1,33 @@
 import torch
 from torch import nn
 
-try:
-    cudabool = torch.has_cuda
-except:
-    cudabool = False
-try:
-    mpsbool = torch.has_mps
-except:
-    mpsbool = False
+# try:
+#     cudabool = torch.has_cuda
+# except:
+#     cudabool = False
+# try:
+#     mpsbool = torch.has_mps
+# except:
+#     mpsbool = False
 
-if cudabool:
-    device = torch.device('cuda:0')
-# elif mpsbool:
-#     device = torch.device('mps')
-else:
-    device = torch.device('cpu')
-
-if device == 'cuda:0':
-    dtype = torch.cuda.FloatTensor
-else:
-    dtype = torch.FloatTensor
-
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# if str(device) != 'cpu':
-#   dtype = torch.cuda.FloatTensor
+# if cudabool:
+#     device = torch.device('cuda:0')
+# # elif mpsbool:
+# #     device = torch.device('mps')
 # else:
-#   dtype = torch.FloatTensor
+#     device = torch.device('cpu')
+
+# if device == 'cuda:0':
+#     dtype = torch.cuda.FloatTensor
+# else:
+#     dtype = torch.FloatTensor
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+if str(device) != 'cpu':
+  dtype = torch.cuda.FloatTensor
+else:
+  dtype = torch.FloatTensor
+
 from torch.autograd import Variable
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau
