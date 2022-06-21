@@ -411,6 +411,7 @@ class TrainMod(object):
                     steptime = datetime.now()
 
                     idx = perm[t * self.batchsize : (t+1) * self.batchsize]
+
                     def closure():
 
                         # Forward pass: compute predicted y by passing x to the model.
@@ -452,7 +453,7 @@ class TrainMod(object):
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
 
-                        if (iter_i % 1000 == 0) and (iter_i != 0) and (j == 0):
+                        if (iter_i % 500 == 0) and (iter_i != 0) and (j == 0):
                             print('--> Testing the model @ {}:'.format(iter_i))
                             print('      Input Labels:')
                             print(X_valid_Tensor[idx][:3])
