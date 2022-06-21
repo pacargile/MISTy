@@ -22,6 +22,8 @@ else:
     dtype = torch.FloatTensor
 from torch.autograd import Variable
 
+print('Runing on device: {0}'.format(device))
+
 # import numpy as np
 import jax.numpy as np
 import warnings
