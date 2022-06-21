@@ -11,13 +11,13 @@ except:
     mpsbool = False
 
 if cudabool:
-    device = torch.device('cuda')
+    device = torch.device('cuda:0')
 # elif mpsbool:
 #     device = torch.device('mps')
 else:
     device = torch.device('cpu')
 
-if device == 'cuda':
+if device == 'cuda:0':
     dtype = torch.cuda.FloatTensor
 else:
     dtype = torch.FloatTensor
