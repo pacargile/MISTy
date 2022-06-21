@@ -1,7 +1,22 @@
 import torch
 from torch import nn
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-if str(device) != 'cpu':
+try:
+    cudabool = torch.has_cuda
+except:
+    cudabool = False
+try:
+    mpsbool = torch.has_mps
+except:
+    mpsbool = False
+
+if cudabool:
+    device = torch.device('cuda')
+# elif mpsbool:
+#     device = torch.device('mps')
+else:
+    device = torch.device('cpu')
+
+if device == 'cuda':
     dtype = torch.cuda.FloatTensor
 else:
     dtype = torch.FloatTensor

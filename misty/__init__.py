@@ -4,4 +4,4 @@ except(ImportError):
     pass
 
 
-__abspath__ = '/Users/pcargile/Astro/GITREPOS/MISTy/'
+__abspath__ = '/Users/pcargile/Astro/gitrepos/MISTy/'
