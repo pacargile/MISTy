@@ -110,18 +110,45 @@ class ResNet(nn.Module):
         self.H2    = H2
         self.D_out = D_out
 
+        kernel_size = 1
+
         self.features = nn.Sequential(
-            nn.Linear(D_in, H1),
-            nn.BatchNorm1d(H1),
-            nn.LeakyReLU(),
-            nn.Linear(H1, H2),
-            nn.LeakyReLU(),
-            nn.Linear(H2, self.D_out),
+            nn.Linear(self.D_in, 32),
+            nn.ReLU(),
+            nn.Conv1d(1, 32, kernel_size, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Linear(32, self.H2),
+            nn.ReLU(),
+            nn.Linear(self.H2, self.D_out),
         )
 
-        kernel_size = 11
+        self.lstm = nn.LSTM(1, 32, 2, batch_first=True)
+        self.gru = nn.GRU(1, 32, 2, batch_first=True)
+        self.fc = nn.Linear(32, 1)
         
-        self.deconv1 = nn.ConvTranspose1d(self.D_out, 64, kernel_size, stride=3, padding=5)
+        self.fc0 = nn.Sequential(
+            nn.Linear(self.D_in, 32),
+            nn.ReLU(),
+            nn.BatchNorm1d(32, eps=1e-05, momentum=0.1, affine=True)            
+        )
+
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(1,32,kernel_size=4),
+            nn.ReLU(),
+        )
+        
+        self.fc1 = nn.Sequential(
+            nn.Linear(32,1),
+            nn.ReLU(),
+        )
+        
+        self.deconv1 = nn.ConvTranspose1d(self.D_in, 64, kernel_size, stride=3, padding=5)
         self.deconv2 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
         self.deconv3 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
         self.deconv4 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
@@ -147,40 +174,27 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         x_i = self.encode(x)
-        x_i = self.features(x_i)#[:,None,:]
-        # print(x_i.shape)
-        # x_i = x_i.view(x_i.shape[0], 1, self.D_out)
+        x_i = x_i.unsqueeze(1)                
+        print(x_i.shape)
 
-        x1 = self.deconv1(x_i)
+        # h0 = torch.zeros(2, x_i.size(0), 32).requires_grad_()
+        # c0 = torch.zeros(2, x_i.size(0), 32).requires_grad_()
+        # lstm_out, (hn, cn) = self.lstm(x_i, (h0.detach(), c0.detach()))
+        # y_i = self.fc(lstm_out[:, -1, :]) 
 
-        x2 = self.deconv2(x1)
-        x2 += self.deconv2b(x1)
-        x2 = self.relu2(x2)
-        x2 = self.dropout1(x2)
+        # x_i = self.fc0(x_i)
 
-        x3 = self.deconv3(x2)
-        x3 += self.deconv3b(x2)
-        x3 = self.relu2(x3)
-        x3 = self.dropout1(x3)
+        # x_i = x_i.unsqueeze(2)                
+        x_i = self.conv1(x_i)     
+        print(x_i.shape)   
+        y_i = self.fc1(x_i)
+        
+        # x_i = x_i.view(x_i.shape[0], self.D_in)
+        # y_i = self.features(x_i)#[:,None,:]
 
-        x4 = self.deconv4(x3)
-        x4 += self.deconv4b(x3)
-        x4 = self.relu2(x4)
-        x4 = self.dropout2(x4)
+        print(y_i.shape)
 
-        x5 = self.deconv5(x4)
-        x5 += self.deconv5b(x4)
-        x5 = self.relu2(x5)
-        x5 = self.dropout2(x5)
-
-        x6 = self.deconv6(x5)
-        x6 += self.deconv6b(x5)
-        x6 = self.relu2(x6)
-        x6 = self.dropout2(x6)
-
-        x7 = self.deconv7(x6)[:,0,:self.D_out]
-
-        return x7
+        return y_i
 
 
     def encode(self,x):

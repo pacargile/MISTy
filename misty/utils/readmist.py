@@ -356,4 +356,4 @@ class readmist(object):
         return outdict
 
     def Peep(self,x):
-        return 0.65*np.exp(-0.5*((x-450)/150)**2) + 0.45*np.exp(-0.5*((x-650)/50)**2)
+        return 0.3*np.exp(-0.5*((x-450)/75)**2) + 0.7*np.exp(-0.5*((x-650)/150)**2)
