@@ -260,7 +260,7 @@ class TrainMod(object):
             if os.path.isfile(self.restartfile):
                 print('Restarting from File: {0} with NNtype: {1}'.format(self.restartfile,self.NNtype))
                 sys.stdout.flush()
-                model = GenMod.readNN(self.restartfile,NNtype=self.NNtype)
+                model = GenMod.readNN(self.restartfile,nntype=self.NNtype)
                 # model = GenMod.Net(nnpath=self.restartfile,nntype=self.NNtype,normed=True)
             else:
                 print('Could Not Find Restart File, Creating a New NN model')
@@ -526,10 +526,14 @@ class TrainMod(object):
                     except KeyError:
                         pass
 
-                    outfile_i.create_dataset(
-                        'model/{0}'.format(kk),
-                        data=model.state_dict()[kk].cpu().numpy(),
-                        compression='gzip')
+                    try:
+                        outfile_i.create_dataset(
+                            'model/{0}'.format(kk),
+                            data=model.state_dict()[kk].cpu().numpy(),
+                            compression='gzip')
+                    except:
+                        print('Problem with {0}'.format(kk))
+                        raise
             print('Finished Epoch {0} @ {1} ({2})'.format(epoch_i+1, datetime.now(),datetime.now() - epochtime))
 
 
