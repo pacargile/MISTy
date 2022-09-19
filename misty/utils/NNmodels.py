@@ -112,71 +112,88 @@ class ResNet(nn.Module):
 
         kernel_size = 1
 
-        self.features = nn.Sequential(
-            nn.Linear(self.D_in, 32),
-            nn.ReLU(),
-            nn.Conv1d(1, 32, kernel_size, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Linear(32, self.H2),
-            nn.ReLU(),
-            nn.Linear(self.H2, self.D_out),
-        )
+        # self.features = nn.Sequential(
+        #     nn.Linear(self.D_in, 32),
+        #     nn.ReLU(),
+        #     nn.Conv1d(1, 32, kernel_size, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.Conv1d(32, 32, kernel_size, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.Linear(32, self.H2),
+        #     nn.ReLU(),
+        #     nn.Linear(self.H2, self.D_out),
+        # )
 
-        self.lstm = nn.LSTM(1, 32, 2, batch_first=True)
-        self.gru = nn.GRU(1, 32, 2, batch_first=True)
-        self.fc = nn.Linear(32, 1)
+        # self.lstm = nn.LSTM(1, 32, 2, batch_first=True)
+        # self.gru = nn.GRU(1, 32, 2, batch_first=True)
+        # self.fc = nn.Linear(32, 1)
         
-        self.fc0 = nn.Sequential(
-            nn.Linear(self.D_in, 32),
-            nn.ReLU(),
-            nn.BatchNorm1d(32, eps=1e-05, momentum=0.1, affine=True)            
-        )
+        # self.fc0 = nn.Sequential(
+        #     nn.Linear(self.D_in, 32),
+        #     nn.ReLU(),
+        #     nn.BatchNorm1d(32, eps=1e-05, momentum=0.1, affine=True)            
+        # )
 
         self.conv1 = nn.Sequential(
-            nn.Conv1d(1,32,kernel_size=4),
-            nn.ReLU(),
+            nn.Conv1d(1,16,kernel_size=1),
+            nn.LeakyReLU(),
         )
+        self.conv2 = nn.Sequential(
+            nn.Conv1d(16,16,kernel_size=1),
+            nn.LeakyReLU(),
+        )
+        
+        self.pool1 =nn.MaxPool1d(2)
+        
+        self.pool2 = nn.MaxPool1d(2)
         
         self.fc1 = nn.Sequential(
-            nn.Linear(32,1),
-            nn.ReLU(),
+            nn.Linear(16,self.D_in),
+            nn.LeakyReLU(),
+            nn.Linear(self.D_in,self.D_out),
         )
         
-        self.deconv1 = nn.ConvTranspose1d(self.D_in, 64, kernel_size, stride=3, padding=5)
-        self.deconv2 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
-        self.deconv3 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
-        self.deconv4 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
-        self.deconv5 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
-        self.deconv6 = nn.ConvTranspose1d(64, 32, kernel_size, stride=3, padding=5)
-        self.deconv7 = nn.ConvTranspose1d(32, 1,  kernel_size, stride=3, padding=5)
+        # self.deconv1 = nn.ConvTranspose1d(self.D_in, 64, kernel_size, stride=3, padding=5)
+        # self.deconv2 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
+        # self.deconv3 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
+        # self.deconv4 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
+        # self.deconv5 = nn.ConvTranspose1d(64, 64, kernel_size, stride=3, padding=5)
+        # self.deconv6 = nn.ConvTranspose1d(64, 32, kernel_size, stride=3, padding=5)
+        # self.deconv7 = nn.ConvTranspose1d(32, 1,  kernel_size, stride=3, padding=5)
 
-        self.deconv2b = nn.ConvTranspose1d(64, 64, 1, stride=3)
-        self.deconv3b = nn.ConvTranspose1d(64, 64, 1, stride=3)
-        self.deconv4b = nn.ConvTranspose1d(64, 64, 1, stride=3)
-        self.deconv5b = nn.ConvTranspose1d(64, 64, 1, stride=3)
-        self.deconv6b = nn.ConvTranspose1d(64, 32, 1, stride=3)
+        # self.deconv2b = nn.ConvTranspose1d(64, 64, 1, stride=3)
+        # self.deconv3b = nn.ConvTranspose1d(64, 64, 1, stride=3)
+        # self.deconv4b = nn.ConvTranspose1d(64, 64, 1, stride=3)
+        # self.deconv5b = nn.ConvTranspose1d(64, 64, 1, stride=3)
+        # self.deconv6b = nn.ConvTranspose1d(64, 32, 1, stride=3)
 
-        self.relu2 = nn.LeakyReLU()
-        self.relu3 = nn.LeakyReLU()
-        self.relu4 = nn.LeakyReLU()
-        self.relu5 = nn.LeakyReLU()
-        self.relu6 = nn.LeakyReLU()
+        # self.relu2 = nn.LeakyReLU()
+        # self.relu3 = nn.LeakyReLU()
+        # self.relu4 = nn.LeakyReLU()
+        # self.relu5 = nn.LeakyReLU()
+        # self.relu6 = nn.LeakyReLU()
 
-        self.dropout1 = nn.Dropout(p=0.2)
-        self.dropout2 = nn.Dropout(p=0.5)
+        # self.dropout1 = nn.Dropout(p=0.2)
+        # self.dropout2 = nn.Dropout(p=0.5)
 
 
     def forward(self, x):
         x_i = self.encode(x)
-        x_i = x_i.unsqueeze(1)                
-        print(x_i.shape)
 
+        x_i = x_i.unsqueeze(1)
+
+        x_i = self.conv1(x_i)     
+        x_i = self.pool1(x_i)
+        x_i = self.conv2(x_i)
+        x_i = self.pool2(x_i)
+        x_i = x_i.view(x_i.shape[0],16)
+        y_i = self.fc1(x_i)
+
+        # x_i = x_i.unsqueeze(1)                
         # h0 = torch.zeros(2, x_i.size(0), 32).requires_grad_()
         # c0 = torch.zeros(2, x_i.size(0), 32).requires_grad_()
         # lstm_out, (hn, cn) = self.lstm(x_i, (h0.detach(), c0.detach()))
@@ -185,14 +202,11 @@ class ResNet(nn.Module):
         # x_i = self.fc0(x_i)
 
         # x_i = x_i.unsqueeze(2)                
-        x_i = self.conv1(x_i)     
-        print(x_i.shape)   
-        y_i = self.fc1(x_i)
+        # print(x_i.shape)   
+        # y_i = self.fc1(x_i)
         
         # x_i = x_i.view(x_i.shape[0], self.D_in)
         # y_i = self.features(x_i)#[:,None,:]
-
-        print(y_i.shape)
 
         return y_i
 

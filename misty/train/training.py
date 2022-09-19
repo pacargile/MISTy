@@ -117,12 +117,13 @@ class TrainMod(object):
         if 'label_i' in kwargs:
             self.label_i = kwargs['label_i']
         else:
-            # self.label_i = ['EEP','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
-            self.label_i = ['log_age','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
+            self.label_i = ['EEP','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
+            # self.label_i = ['log_age','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
         if 'label_o'in kwargs:
             self.label_o = kwargs['label_o']
         else:
-            self.label_o = ['star_mass','log_L','log_Teff','log_R','log_g','[Fe/H]','[a/Fe]','EEP']
+            self.label_o = ['star_mass','log_age','log_L','log_Teff','log_R','log_g','[Fe/H]','[a/Fe]']
+            # self.label_o = ['star_mass','log_L','log_Teff','log_R','log_g','[Fe/H]','[a/Fe]','EEP']
 
         # check for user defined ranges for atm models
         self.eeprange  = kwargs.get('eep',None)
@@ -167,11 +168,12 @@ class TrainMod(object):
             eepprior=False,
             eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
-        # switch EEP <-> log(Age) so that we can train on age
-        self.testlabels_i = mod_test['label_i']
-        self.testlabels   = mod_test['label_i'].copy()
-        self.testlabels[...,0] = mod_test['log_age']
-        del mod_test['log_age']
+        # # switch EEP <-> log(Age) so that we can train on age
+        # self.testlabels_i = mod_test['label_i']
+        # self.testlabels   = mod_test['label_i'].copy()
+        # self.testlabels[...,0] = mod_test['log_age']
+        # del mod_test['log_age']
+        self.testlabels = mod_test['label_i'].copy()
 
         self.mod_test = Table()
         for x in self.label_o:
@@ -298,10 +300,10 @@ class TrainMod(object):
 
 
         # initialize the loss function
-        # loss_fn = torch.nn.MSELoss(reduction='sum')
+        loss_fn = torch.nn.MSELoss(reduction='sum')
         # loss_fn = torch.nn.SmoothL1Loss(reduction='sum')
         # loss_fn = torch.nn.KLDivLoss(size_average=False)
-        loss_fn = torch.nn.L1Loss(reduction = 'sum')
+        # loss_fn = torch.nn.L1Loss(reduction = 'sum')
 
         # initialize the optimizer
         learning_rate = self.lr
@@ -344,18 +346,19 @@ class TrainMod(object):
                 self.numtrain,
                 norm=self.norm,
                 eepprior=self.eepprior,                
-                excludelabels=self.testlabels_i,
+                excludelabels=self.testlabels,
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
-            # switch EEP <-> log(Age) so that we can train on age
-            trainlabels_i      = mod_t['label_i']
-            trainlabels        = mod_t['label_i'].copy()
-            if self.norm:
-                unnorm_logage_t = (mod_t['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
-            else:
-                unnorm_logage_t = mod_t['log_age']
-            trainlabels[...,0] = unnorm_logage_t
-            del mod_t['log_age']
+            # # switch EEP <-> log(Age) so that we can train on age
+            # trainlabels_i      = mod_t['label_i']
+            # trainlabels        = mod_t['label_i'].copy()
+            # if self.norm:
+            #     unnorm_logage_t = (mod_t['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+            # else:
+            #     unnorm_logage_t = mod_t['log_age']
+            # trainlabels[...,0] = unnorm_logage_t
+            # del mod_t['log_age']
+            trainlabels = mod_t['label_i'].copy()
 
             # create tensor for input training labels
             X_train_labels = trainlabels
@@ -372,18 +375,19 @@ class TrainMod(object):
                 self.numtrain,
                 norm=self.norm,
                 eepprior=self.eepprior,
-                excludelabels=np.array(list(self.testlabels_i)+list(trainlabels_i)),
+                excludelabels=np.array(list(self.testlabels)+list(trainlabels)),
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
-            # switch EEP <-> log(Age) so that we can train on age
-            validlabels_i      = mod_v['label_i']
-            validlabels        = mod_v['label_i'].copy()
-            if self.norm:
-                unnorm_logage_v = (mod_v['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
-            else:
-                unnorm_logage_v = mod_v['log_age']
-            validlabels[...,0] = unnorm_logage_v
-            del mod_v['log_age']
+            # # switch EEP <-> log(Age) so that we can train on age
+            # validlabels_i      = mod_v['label_i']
+            # validlabels        = mod_v['label_i'].copy()
+            # if self.norm:
+            #     unnorm_logage_v = (mod_v['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+            # else:
+            #     unnorm_logage_v = mod_v['log_age']
+            # validlabels[...,0] = unnorm_logage_v
+            # del mod_v['log_age']
+            validlabels = mod_v['label_i'].copy()
 
             # create tensor for input validation labels
             X_valid_labels = validlabels

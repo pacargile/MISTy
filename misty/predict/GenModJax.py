@@ -63,7 +63,20 @@ class Net(object):
             self.eval = self.evalLinNet
 
         if nntype == 'ResNet':
-            raise IOError("ResNet not implemented yet with JAX")
+            # raise IOError("ResNet not implemented yet with JAX")
+            # self.cbias1 = nnh5['model/conv1.0.bias'][()]
+            # self.cbias2 = nnh5['model/conv2.0.bias'][()]
+            # self.cweight1 = nnh5['model/conv1.0.weight'][()]
+            # self.cweight2 = nnh5['model/conv2.0.weight'][()]
+
+            # self.weight1 = nnh5['model/fc1.0.weight'][()]
+            # self.weight2 = nnh5['model/fc1.2.weight'][()]
+            # self.bias1   = nnh5['model/fc1.0.bias'][()]
+            # self.bias2   = nnh5['model/fc1.2.bias'][()]
+
+            
+
+            self.eval = self.evalResNet
 
         nnh5.close()
 
@@ -72,7 +85,7 @@ class Net(object):
         This is the activation function used by default in all our neural networks.
         '''
         return z*(z > 0) + 0.01*z*(z < 0)
-     
+            
     def encode(self,x):
         x_np = np.array(x)
         x_scaled = (x_np-self.xmin)/(self.xmax-self.xmin) - 0.5
@@ -115,6 +128,24 @@ class Net(object):
 
         return y
 
+    def evalResNet(self,x):
+        x_i = self.encode(x)
+        x_i = x_i.unsqueeze(1)
+
+        layer1  = np.einsum('ij,j->i', self.weight1, x_i)                  + self.bias1
+        layer2  = np.einsum('ij,j->i', self.weight2, self.leaky_relu(layer1)) + self.bias2
+        layer3  = np.einsum('ij,j->i', self.weight3, self.leaky_relu(layer2)) + self.bias3
+        layer4  = np.einsum('ij,j->i', self.weight4, self.leaky_relu(layer3)) + self.bias4
+        layer5  = np.einsum('ij,j->i', self.weight5, self.leaky_relu(layer4)) + self.bias5
+        y_i     = np.einsum('ij,j->i', self.weight6, self.leaky_relu(layer5)) + self.bias6
+
+        if self.normed:
+            y = np.array([self.unnorm(yy,ii) for ii,yy in enumerate(y_i)])
+        else:
+            y = y_i
+
+        return y
+
 class modpred(object):
   """docstring for modpred"""
   def __init__(self, nnpath=None, nntype='LinNet', normed=False):
@@ -127,39 +158,45 @@ class modpred(object):
     self.anns = Net(nnpath=self.nnpath,nntype=nntype,normed=normed)
 
     self.modpararr = ([
-        'log(Age)',
+        'EEP',
         'initial_Mass',
         'initial_[Fe/H]',
         'initial_[a/Fe]',
         'Mass',
+        'log(Age)',
         'log(R)',
         'log(L)',
         'log(Teff)',
         '[Fe/H]',
         '[a/Fe]',
         'log(g)',
-        'EEP',])
+        ])
 
   def pred(self,inpars):
     return self.anns.eval(inpars)
 
-  def getMIST(self,logage=9.5, mass=1.0, feh=0.0, afe=0.0, **kwargs):
-    x = np.asarray([logage,mass,feh,afe])
+  def getMIST(self,eep=300, mass=1.0, feh=0.0, afe=0.0, **kwargs):
+    x = np.asarray([eep,mass,feh,afe])
+    # x = np.asarray([logage,mass,feh,afe])
 
     modpred = self.pred(x)
-    # output: 'star_mass', 'log_L', 'log_Teff', log_R', 'log_g', '[Fe/H]', '[a/Fe]', 'EEP'
-
-    # logTeff = 0.25 * (modpred[1] - 2.0 * modpred[2]) + np.log10(5772.0)
-    # logg    = np.log10(modpred[0]) - 2.0 * modpred[2] + 4.4374
-
+    
     out = {}
-    out['log_age'] = logage
-    out['initial_masss'] = mass
+    # out['log_age'] = logage
+    out['EEP'] = eep
+    out['initial_Mass'] = mass
     out['initial_[Fe/H]'] = feh
     out['initial_[a/Fe]'] = afe
 
-    for ii,x in enumerate(self.anns.label_out):
-        out[x] = modpred[ii]
+    out_i = {x.decode('utf-8'):modpred[ii] for ii,x in enumerate(self.anns.label_out)}
+    out.update(out_i)
 
-    # out = [logage,mass,feh,afe,modpred[5],modpred[0],modpred[3],modpred[1],modpred[2],modpred[6],modpred[7],modpred[4]]
+    out['log(g)'] = out.pop('log_g')
+    out['log(Teff)'] = out.pop('log_Teff')
+    out['log(Age)'] = out.pop('log_age')
+    out['Mass'] = out.pop('star_mass')
+    out['log(R)'] = out.pop('log_R')
+    out['log(L)'] = out.pop('log_L')
+
+    # out = [eep,mass,feh,afe,modpred[5],modpred[0],modpred[3],modpred[1],modpred[2],modpred[6],modpred[7],modpred[4]]
     return out
