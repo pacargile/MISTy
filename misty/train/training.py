@@ -350,7 +350,7 @@ class TrainMod(object):
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
             fig,ax = plt.subplots(nrows=2,ncols=1,figsize=(8,8))
-
+            
             ax[0].scatter(mod_t['label_i'][0],mod_t['label_i'][1],marker='.',c='C0',s=5)
             ax[1].scatter(mod_t['label_i'][2],mod_t['label_i'][3],marker='.',c='C0',s=5)
 
