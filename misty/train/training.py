@@ -350,9 +350,9 @@ class TrainMod(object):
                 eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
 
             fig,ax = plt.subplots(nrows=2,ncols=1,figsize=(8,8))
-            
-            ax[0].scatter(mod_t['label_i'][0],mod_t['label_i'][1],marker='.',c='C0',s=5)
-            ax[1].scatter(mod_t['label_i'][2],mod_t['label_i'][3],marker='.',c='C0',s=5)
+
+            ax[0].scatter(mod_t['label_i'][:,0],mod_t['label_i'][:,1],marker='.',c='C0',s=5,alpha=0.1)
+            ax[1].scatter(mod_t['label_i'][:,2],mod_t['label_i'][:,3],marker='.',c='C0',s=5,alpha=0.1)
 
             ax[0].set_xlabel('EEP')
             ax[0].set_ylabel('Mass_i')
@@ -365,9 +365,9 @@ class TrainMod(object):
 
             fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
 
-            ax[0].scatter(mod_t['log_Teff'],mod_t['log_g'],marker='.',c='C3',s=5)
-            ax[1].scatter(mod_t['log_L'],mod_t['log_R'],marker='.',c='C3',s=5)
-            ax[2].scatter(mod_t['log_age'],mod_t['[Fe/H]'],marker='.',c='C3',s=5)
+            ax[0].scatter(mod_t['log_Teff'],mod_t['log_g'],marker='.',c='C3',s=5,alpha=0.1)
+            ax[1].scatter(mod_t['log_L'],mod_t['log_R'],marker='.',c='C3',s=5,alpha=0.1)
+            ax[2].scatter(mod_t['log_age'],mod_t['[Fe/H]'],marker='.',c='C3',s=5,alpha=0.1)
 
             ax[0].set_xlabel('log(Teff)')
             ax[0].set_ylabel('log(g)')
