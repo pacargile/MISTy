@@ -81,7 +81,7 @@ class readmist(object):
             'log_Teff':[np.log10(2500.0),np.log10(50000.0)],
             'log_R':[-2.0,4.0],
             'log_g':[-1,5.5],
-            'log_age':[5.0,np.log10(20E+9)],
+            'log_age':[6.0,np.log10(20E+9)],
             '[Fe/H]':[-4.0,0.5],
             '[a/Fe]':[-0.2,0.6],
             'Agewgt':[0,0.05],
@@ -307,8 +307,8 @@ class readmist(object):
                     print(mod_o['star_mass'][ind])
                     raise
 
-                # check to make sure log(Age) < np.log10(20E+9)
-                if logage_oo > np.log10(20E+9):
+                # check to make sure log(Age) < np.log10(20E+9) and log(Age) > np.log10(1E+6)
+                if (logage_oo > np.log10(20E+9)) | (logage_oo < np.log10(1E+6)):
                     continue
 
                 # add label_i to label_o
