@@ -327,6 +327,13 @@ class TrainMod(object):
         print('... Number of models in each batch: {}'.format(self.batchsize))
         print('... Number of batches: {}'.format(nbatches))
 
+        try:
+            total_memory, used_memory, free_memory = map(
+                int, os.popen('free -t -g').readlines()[-1].split()[1:])
+            print('--- Current Memory Usage Before Epoch 1: {0} GB'.format(used_memory))
+        except:
+            pass
+
         # cycle through epochs
         for epoch_i in range(int(self.numepochs)):
             epochtime = datetime.now()
@@ -351,8 +358,8 @@ class TrainMod(object):
 
             fig,ax = plt.subplots(nrows=2,ncols=1,figsize=(8,8))
 
-            ax[0].scatter(mod_t['label_i'][:,0],mod_t['label_i'][:,1],marker='.',c='C0',s=5,alpha=0.1)
-            ax[1].scatter(mod_t['label_i'][:,2],mod_t['label_i'][:,3],marker='.',c='C0',s=5,alpha=0.1)
+            ax[0].scatter(mod_t['label_i'][:,0],mod_t['label_i'][:,1],marker='.',c='C0',s=5,alpha=0.05)
+            ax[1].scatter(mod_t['label_i'][:,2],mod_t['label_i'][:,3],marker='.',c='C0',s=5,alpha=0.05)
 
             ax[0].set_xlabel('EEP')
             ax[0].set_ylabel('Mass_i')
@@ -365,9 +372,9 @@ class TrainMod(object):
 
             fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
 
-            ax[0].scatter(mod_t['log_Teff'],mod_t['log_g'],marker='.',c='C3',s=5,alpha=0.1)
-            ax[1].scatter(mod_t['log_L'],mod_t['log_R'],marker='.',c='C3',s=5,alpha=0.1)
-            ax[2].scatter(mod_t['log_age'],mod_t['[Fe/H]'],marker='.',c='C3',s=5,alpha=0.1)
+            ax[0].scatter(mod_t['log_Teff'],mod_t['log_g'],marker='.',c='C3',s=5,alpha=0.05)
+            ax[1].scatter(mod_t['log_L'],mod_t['log_R'],marker='.',c='C3',s=5,alpha=0.05)
+            ax[2].scatter(mod_t['log_age'],mod_t['[Fe/H]'],marker='.',c='C3',s=5,alpha=0.05)
 
             ax[0].set_xlabel('log(Teff)')
             ax[0].set_ylabel('log(g)')
@@ -432,6 +439,13 @@ class TrainMod(object):
             Y_valid_Tensor = Y_valid_Tensor.to(device)
 
             print('... Pulling Training & Validation Took {0}'.format(datetime.now()-epochtime))
+
+            try:
+                total_memory, used_memory, free_memory = map(
+                    int, os.popen('free -t -g').readlines()[-1].split()[1:])
+                print('--- Current Memory Usage Before Iteration 1: {0} GB'.format(used_memory))
+            except:
+                pass
 
             cc = 0
             for iter_i in range(int(self.numsteps)):
@@ -534,9 +548,15 @@ class TrainMod(object):
                     plt.close(fig)
 
                     if iter_i % 100 == 0.0:
+                        try:
+                            total_memory, used_memory, free_memory = map(
+                                int, os.popen('free -t -g').readlines()[-1].split()[1:])
+                        except:
+                            pass
+
                         print (
-                            '--> Ep: {0:d} -- Iter {1:d}/{2:d} -- Time/iter: {3} -- Time: {4} -- Train Loss: {5:.6f} -- Valid Loss: {6:.6f}'.format(
-                            int(epoch_i+1),int(iter_i+1),int(self.numsteps), datetime.now()-itertime, datetime.now(), loss_data, loss_valid_data)
+                            '--> Ep: {0:d} -- Iter {1:d}/{2:d} -- Time/iter: {3} -- Time: {4} -- Train Loss: {5:.6f} -- Valid Loss: {6:.6f} -- Mem Used: {7} GB'.format(
+                            int(epoch_i+1),int(iter_i+1),int(self.numsteps), datetime.now()-itertime, datetime.now(), loss_data, loss_valid_data, used_memory)
                         )
                     sys.stdout.flush()                      
 
@@ -570,7 +590,13 @@ class TrainMod(object):
                     except:
                         print('Problem with {0}'.format(kk))
                         raise
-            print('Finished Epoch {0} @ {1} ({2})'.format(epoch_i+1, datetime.now(),datetime.now() - epochtime))
+            try:
+                total_memory, used_memory, free_memory = map(
+                    int, os.popen('free -t -g').readlines()[-1].split()[1:])
+            except:
+                pass
+
+            print('Finished Epoch {0} @ {1} ({2}) -- Mem Used: {3} GB'.format(epoch_i+1, datetime.now(),datetime.now() - epochtime, used_memory))
 
 
         print('Finished training model, took: {0}'.format(
