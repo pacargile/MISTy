@@ -3,6 +3,7 @@ import misty
 import numpy as np
 from scipy.interpolate import NearestNDInterpolator
 from datetime import datetime
+from astropy.table import Table
 
 class readmist(object):
     """docstring for readmist"""
@@ -352,6 +353,83 @@ class readmist(object):
         outdict['[a/Fe]']     = np.array(aFes_o).T
         outdict['EEP']        = np.array(eep_o).T
         # outdict['Agewgt']      = np.array(Agewgt_o).T
+
+        return outdict
+
+    def readmod(self,intab,**kwargs):
+        """
+        ingest a fits file for user selected models from mist
+        """
+
+        norm = kwargs.get('norm',False)
+
+        # create arrays for outputs
+        label_o = []
+        #
+        starmass_o = []
+        logL_o = []
+        logTeff_o = []
+        logR_o = []
+        logg_o = []
+        logage_o = []
+        FeHs_o = []
+        aFes_o = []
+        eep_o = []
+
+        starttimef = datetime.now()
+
+        inputtab = Table.read(intab,format='fits')
+        
+        for ii,tt in enumerate(inputtab):
+            label_o.append([
+                float(tt['EEP']),
+                float(tt['initial_mass']),
+                float(tt['inital_[Fe/H]']),
+                float(tt['initial_[a/Fe]'])
+                ])
+
+            starmass_oo = float(tt['star_mass'])
+            logL_oo     = float(tt['log_L'])
+            logTeff_oo  = float(tt['log_Teff'])
+            logR_oo     = float(tt['log_R'])
+            logg_oo     = float(tt['log_g'])
+            logage_oo   = float(tt['log_age'])
+            FeHs_oo     = float(tt['[Fe/H]'])
+            aFes_oo     = float(tt['[a/Fe]'])
+            eep_oo      = float(tt['EEP'])
+
+            if norm:
+                starmass_o.append(self.normf(starmass_oo,'star_mass'))
+                logL_o.append(self.normf(logL_oo,'log_L'))
+                logTeff_o.append(self.normf(logTeff_oo,'log_Teff'))
+                logR_o.append(self.normf(logR_oo,'log_R'))
+                logg_o.append(self.normf(logg_oo,'log_g'))
+                logage_o.append(self.normf(logage_oo,'log_age'))
+                FeHs_o.append(self.normf(FeHs_oo,'[Fe/H]'))
+                aFes_o.append(self.normf(aFes_oo,'[a/Fe]'))
+                eep_o.append(self.normf(eep_oo,'EEP'))
+            else:
+                starmass_o.append(starmass_oo)
+                logL_o.append(logL_oo)
+                logTeff_o.append(logTeff_oo)
+                logR_o.append(logR_oo)
+                logg_o.append(logg_oo)
+                logage_o.append(logage_oo)
+                FeHs_o.append(FeHs_oo)
+                aFes_o.append(aFes_oo)
+                eep_o.append(eep_oo)
+
+        outdict = {}
+        outdict['label_i']    = np.array(label_o)
+        outdict['star_mass']  = np.array(starmass_o).T
+        outdict['log_L']      = np.array(logL_o).T
+        outdict['log_Teff']   = np.array(logTeff_o).T
+        outdict['log_R']      = np.array(logR_o).T
+        outdict['log_g']      = np.array(logg_o).T
+        outdict['log_age']    = np.array(logage_o).T
+        outdict['[Fe/H]']     = np.array(FeHs_o).T
+        outdict['[a/Fe]']     = np.array(aFes_o).T
+        outdict['EEP']        = np.array(eep_o).T
 
         return outdict
 

@@ -153,6 +153,15 @@ class TrainMod(object):
         # starting learning rate
         self.lr = kwargs.get('lr',1E-4)
 
+        # user defined test set
+        self.testset = kwargs.get('testset',None)
+
+        # user defined training set
+        self.trainset = kwargs.get('trainingset',None)
+
+        # user defined validation set
+        self.validset = kwargs.get('validset',None)
+
         print('... Running Training on Device: {}'.format(device))
 
         # initialzie class to pull models
@@ -162,11 +171,15 @@ class TrainMod(object):
         sys.stdout.flush()
 
         # pull a quick set of test models to determine general properties
-        mod_test = self.mistmods.pullmod(
-            self.numtest,
-            norm=False,
-            eepprior=False,
-            eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
+        if self.testset is None:
+            mod_test = self.mistmods.pullmod(
+                self.numtest,
+                norm=False,
+                eepprior=False,
+                eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
+        else:
+            mod_test = self.mistmods.readmod(self.testset,
+                                             norm=False)
 
         # # switch EEP <-> log(Age) so that we can train on age
         # self.testlabels_i = mod_test['label_i']
@@ -349,14 +362,18 @@ class TrainMod(object):
             maxres_loss = []
 
             # pull training data
-            mod_t = self.mistmods.pullmod(
-                self.numtrain,
-                norm=self.norm,
-                eepprior=self.eepprior,                
-                excludelabels=self.testlabels,
-                eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
+            if self.trainset is None:
+                mod_t = self.mistmods.pullmod(
+                    self.numtrain,
+                    norm=self.norm,
+                    eepprior=self.eepprior,                
+                    excludelabels=self.testlabels,
+                    eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
+            else:
+                mod_t = self.mistmods.readmod(self.trainset,
+                                             norm=self.norm)
 
-            fig,ax = plt.subplots(nrows=2,ncols=1,figsize=(8,8))
+            fig,ax = plt.subplots(nrows=2,ncols=1,figsize=(8,8),constrained_layout=True)
 
             ax[0].scatter(mod_t['label_i'][:,0],mod_t['label_i'][:,1],marker='.',c='C0',s=5,alpha=0.05)
             ax[1].scatter(mod_t['label_i'][:,2],mod_t['label_i'][:,3],marker='.',c='C0',s=5,alpha=0.05)
@@ -370,7 +387,7 @@ class TrainMod(object):
             fig.savefig('{0}_trainingset_T_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
             plt.close(fig)
 
-            fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
+            fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8),constrained_layout=True)
 
             ax[0].scatter(mod_t['log_Teff'],mod_t['log_g'],marker='.',c='C3',s=5,alpha=0.05)
             ax[1].scatter(mod_t['log_L'],mod_t['log_R'],marker='.',c='C3',s=5,alpha=0.05)
@@ -410,12 +427,16 @@ class TrainMod(object):
             Y_train_Tensor = Y_train_Tensor.to(device)
 
             # pull validataion data
-            mod_v = self.mistmods.pullmod(
-                self.numtrain,
-                norm=self.norm,
-                eepprior=self.eepprior,
-                excludelabels=np.array(list(self.testlabels)+list(trainlabels)),
-                eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
+            if self.validset is None:
+                mod_v = self.mistmods.pullmod(
+                    self.numtrain,
+                    norm=self.norm,
+                    eepprior=self.eepprior,
+                    excludelabels=np.array(list(self.testlabels)+list(trainlabels)),
+                    eep=self.eeprange,mass=self.massrange,feh=self.FeHrange,afe=self.aFerange)
+            else:
+                mod_v = self.mistmods.readmod(self.validset,
+                                             norm=self.norm)
 
             # # switch EEP <-> log(Age) so that we can train on age
             # validlabels_i      = mod_v['label_i']
@@ -532,15 +553,15 @@ class TrainMod(object):
                     maxres_loss.append(maxres)
 
                     fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
-                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C0',label='Training')
-                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=1.0,alpha=0.75,c='C3',label='Validation')
+                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.1,alpha=0.75,c='C0',label='Training')
+                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.1,alpha=0.75,c='C3',label='Validation')
                     ax[0].legend()
                     ax[0].set_ylabel('log(L1 Loss per model)')
 
-                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=1.0,alpha=0.75,c='C4',label='max')
+                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.1,alpha=0.75,c='C4',label='max')
                     ax[1].set_ylabel('log(|Max Residual|)')
 
-                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=1.0,alpha=0.75,c='C2',label='median')
+                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.1,alpha=0.75,c='C2',label='median')
                     ax[2].set_xlabel('Iteration')
                     ax[2].set_ylabel('log(|Med Residual|)')
 
