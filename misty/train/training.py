@@ -329,7 +329,7 @@ class TrainMod(object):
         #     [p for p in model.parameters() if p.requires_grad==True], lr=learning_rate)
 
         # initialize the scheduler to adjust the learning rate
-        scheduler = StepLR(optimizer,100,gamma=0.90)
+        scheduler = StepLR(optimizer,5E+4,gamma=0.90)
         # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
 
         # number of batches
@@ -553,15 +553,15 @@ class TrainMod(object):
                     maxres_loss.append(maxres)
 
                     fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
-                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.1,alpha=0.75,c='C0',label='Training')
-                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.1,alpha=0.75,c='C3',label='Validation')
+                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.1,alpha=1.0,c='C0',label='Training')
+                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.1,alpha=1.0,c='C3',label='Validation')
                     ax[0].legend()
                     ax[0].set_ylabel('log(L1 Loss per model)')
 
-                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.1,alpha=0.75,c='C4',label='max')
+                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.1,alpha=1.0,c='C4',label='max')
                     ax[1].set_ylabel('log(|Max Residual|)')
 
-                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.1,alpha=0.75,c='C2',label='median')
+                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.1,alpha=1.0,c='C2',label='median')
                     ax[2].set_xlabel('Iteration')
                     ax[2].set_ylabel('log(|Med Residual|)')
 
@@ -592,9 +592,9 @@ class TrainMod(object):
                 #     current_loss = loss_valid_data
                 #     break
 
-            # adjust the optimizer lr
-            scheduler.step()
-            
+                # adjust the optimizer lr
+                scheduler.step()
+                
             # After Each Epoch, write network to output HDF5 file to save progress
             with h5py.File('{0}'.format(self.outfilename),'r+') as outfile_i:
                 for kk in model.state_dict().keys():
