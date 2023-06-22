@@ -30,7 +30,7 @@ else:
 
 from torch.autograd import Variable
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau
+from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau,ExponentialLR
 
 import torch.multiprocessing as multiprocessing
 from torch.multiprocessing import Pool
@@ -45,7 +45,7 @@ import traceback
 import numpy as np
 import warnings
 import h5py
-import time,sys,os,glob
+import time,sys,os,glob,shutil
 from datetime import datetime
 
 from ..utils import NNmodels, radam, readmist
@@ -113,17 +113,25 @@ class TrainMod(object):
         else:
             self.H3 = 256
 
+        # set if user wants to train on age or on EEP, default is EEP
+        self.trainagebool = kwargs.get('trainage',False)
+        print('... Training on Age: {}'.format(self.trainagebool))
+
         # create list of in labels and out labels
         if 'label_i' in kwargs:
             self.label_i = kwargs['label_i']
         else:
-            self.label_i = ['EEP','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
-            # self.label_i = ['log_age','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
+            if self.trainagebool:
+                self.label_i = ['log_age','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
+            else:
+                self.label_i = ['EEP','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
         if 'label_o'in kwargs:
             self.label_o = kwargs['label_o']
         else:
-            self.label_o = ['star_mass','log_age','log_L','log_Teff','log_R','log_g','[Fe/H]','[a/Fe]']
-            # self.label_o = ['star_mass','log_L','log_Teff','log_R','log_g','[Fe/H]','[a/Fe]','EEP']
+            if self.trainagebool:
+                self.label_o = ['star_mass','log_L','log_Teff','log_R','log_g','[Fe/H]','[a/Fe]','EEP']
+            else:
+                self.label_o = ['star_mass','log_age','log_L','log_Teff','log_R','log_g','[Fe/H]','[a/Fe]']
 
         # check for user defined ranges for atm models
         self.eeprange  = kwargs.get('eep',None)
@@ -181,19 +189,20 @@ class TrainMod(object):
             mod_test = self.mistmods.readmod(self.testset,
                                              norm=False)
 
-        # # switch EEP <-> log(Age) so that we can train on age
-        # self.testlabels_i = mod_test['label_i']
-        # self.testlabels   = mod_test['label_i'].copy()
-        # self.testlabels[...,0] = mod_test['log_age']
-        # del mod_test['log_age']
-        self.testlabels = mod_test['label_i'].copy()
+        if self.trainagebool:
+            # switch EEP <-> log(Age) so that we can train on age
+            self.testlabels_i = mod_test['label_i']
+            self.testlabels   = mod_test['label_i'].copy()
+            self.testlabels[...,0] = mod_test['log_age']
+            del mod_test['log_age']
+        else:
+            self.testlabels = mod_test['label_i'].copy()
 
         self.mod_test = Table()
         for x in self.label_o:
             self.mod_test[x] = mod_test[x]
 
         print('... Finished reading in test set of models')
-
 
         # determine normalization values
         self.xmin = np.array([self.mistmods.minmax[x][0] 
@@ -267,7 +276,6 @@ class TrainMod(object):
                 torch.cuda.device_count(),
                 ))
 
-
         # determine if user wants to start from old file, or
         # create a new ANN model
         if self.restartfile is not False:
@@ -310,28 +318,7 @@ class TrainMod(object):
             except:
                 print('!!! PROBLEM WITH WRITING TO HDF5 !!!')
                 raise
-
-
-        # initialize the loss function
-        loss_fn = torch.nn.MSELoss(reduction='sum')
-        # loss_fn = torch.nn.SmoothL1Loss(reduction='sum')
-        # loss_fn = torch.nn.KLDivLoss(size_average=False)
-        # loss_fn = torch.nn.L1Loss(reduction = 'sum')
-
-        # initialize the optimizer
-        learning_rate = self.lr
-
-        # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-        # optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
-        optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate)
-        # we adopt rectified Adam for the optimization
-        # optimizer = radam.RAdam(
-        #     [p for p in model.parameters() if p.requires_grad==True], lr=learning_rate)
-
-        # initialize the scheduler to adjust the learning rate
-        scheduler = StepLR(optimizer,5E+4,gamma=0.90)
-        # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
-
+        
         # number of batches
         nbatches = self.numtrain // self.batchsize
 
@@ -341,12 +328,17 @@ class TrainMod(object):
         print('... Number of batches: {}'.format(nbatches))
 
         try:
-            total_memory, used_memory, free_memory = map(
-                int, os.popen('free -t -g').readlines()[-1].split()[1:])
-            print('--- Current Memory Usage Before Epoch 1: {0} GB'.format(used_memory))
+            if shutil.which('free') is not None:
+                total_memory, used_memory, free_memory = map(
+                    int, os.popen('free -t -g').readlines()[-1].split()[1:])
+                print('--- Current Memory Usage Before Epoch 1: {0} GB'.format(used_memory))
+            else:
+                total_memory = 0
+                used_memory = 0
+                free_memory = 0
         except:
             pass
-
+        
         # cycle through epochs
         for epoch_i in range(int(self.numepochs)):
             epochtime = datetime.now()
@@ -405,16 +397,18 @@ class TrainMod(object):
             fig.savefig('{0}_trainingset_P_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
             plt.close(fig)
 
-            # # switch EEP <-> log(Age) so that we can train on age
-            # trainlabels_i      = mod_t['label_i']
-            # trainlabels        = mod_t['label_i'].copy()
-            # if self.norm:
-            #     unnorm_logage_t = (mod_t['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
-            # else:
-            #     unnorm_logage_t = mod_t['log_age']
-            # trainlabels[...,0] = unnorm_logage_t
-            # del mod_t['log_age']
-            trainlabels = mod_t['label_i'].copy()
+            if self.trainagebool:
+                # switch EEP <-> log(Age) so that we can train on age
+                trainlabels_i      = mod_t['label_i']
+                trainlabels        = mod_t['label_i'].copy()
+                if self.norm:
+                    unnorm_logage_t = (mod_t['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+                else:
+                    unnorm_logage_t = mod_t['log_age']
+                trainlabels[...,0] = unnorm_logage_t
+                del mod_t['log_age']
+            else:
+                trainlabels = mod_t['label_i'].copy()
 
             # create tensor for input training labels
             X_train_labels = trainlabels
@@ -438,16 +432,18 @@ class TrainMod(object):
                 mod_v = self.mistmods.readmod(self.validset,
                                              norm=self.norm)
 
-            # # switch EEP <-> log(Age) so that we can train on age
-            # validlabels_i      = mod_v['label_i']
-            # validlabels        = mod_v['label_i'].copy()
-            # if self.norm:
-            #     unnorm_logage_v = (mod_v['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
-            # else:
-            #     unnorm_logage_v = mod_v['log_age']
-            # validlabels[...,0] = unnorm_logage_v
-            # del mod_v['log_age']
-            validlabels = mod_v['label_i'].copy()
+            if self.trainagebool:
+                # switch EEP <-> log(Age) so that we can train on age
+                validlabels_i      = mod_v['label_i']
+                validlabels        = mod_v['label_i'].copy()
+                if self.norm:
+                    unnorm_logage_v = (mod_v['log_age'] + 0.5)*(self.mistmods.minmax['log_age'][1]-self.mistmods.minmax['log_age'][0]) + self.mistmods.minmax['log_age'][0]
+                else:
+                    unnorm_logage_v = mod_v['log_age']
+                validlabels[...,0] = unnorm_logage_v
+                del mod_v['log_age']
+            else:
+                validlabels = mod_v['label_i'].copy()
 
             # create tensor for input validation labels
             X_valid_labels = validlabels
@@ -462,11 +458,37 @@ class TrainMod(object):
             print('... Pulling Training & Validation Took {0}'.format(datetime.now()-epochtime))
 
             try:
-                total_memory, used_memory, free_memory = map(
-                    int, os.popen('free -t -g').readlines()[-1].split()[1:])
-                print('--- Current Memory Usage Before Iteration 1: {0} GB'.format(used_memory))
+                if shutil.which('free') is not None:            
+                    total_memory, used_memory, free_memory = map(
+                        int, os.popen('free -t -g').readlines()[-1].split()[1:])
+                    print('--- Current Memory Usage Before Iteration 1: {0} GB'.format(used_memory))
+                else:
+                    total_memory = 0
+                    used_memory = 0
+                    free_memory = 0
             except:
                 pass
+
+            # initialize the loss function
+            loss_fn = torch.nn.MSELoss(reduction='sum')
+            # loss_fn = torch.nn.SmoothL1Loss(reduction='sum')
+            # loss_fn = torch.nn.KLDivLoss(size_average=False)
+            # loss_fn = torch.nn.L1Loss(reduction = 'sum')
+
+            # initialize the optimizer
+            learning_rate = self.lr
+
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            # optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
+            # optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate, eps=1E-5, weight_decay=1E-3)
+            # we adopt rectified Adam for the optimization
+            # optimizer = radam.RAdam(
+            #     [p for p in model.parameters() if p.requires_grad==True], lr=learning_rate)
+
+            # initialize the scheduler to adjust the learning rate
+            # scheduler = StepLR(optimizer,10000,gamma=0.5,verbose=False)
+            # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
+            scheduler = ExponentialLR(optimizer,gamma=1-(5E-5),verbose=False)
 
             cc = 0
             for iter_i in range(int(self.numsteps)):
@@ -484,32 +506,26 @@ class TrainMod(object):
 
                     idx = perm[t * self.batchsize : (t+1) * self.batchsize]
 
-                    def closure():
+                    optimizer.zero_grad()
+                    Y_pred_train_Tensor = model(X_train_Tensor[idx])
+                    
+                    # Compute and print loss.
+                    loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
 
-                        # Forward pass: compute predicted y by passing x to the model.
-                        Y_pred_train_Tensor = model(X_train_Tensor[idx])
-
-                        # print('t',Y_train_Tensor[idx][:10])
-                        # print('p',Y_pred_train_Tensor[:10])
-
-                        # Compute and print loss.
-                        loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
-
-                        # Backward pass: compute gradient of the loss with respect to model parameters
-                        optimizer.zero_grad()
-                        loss.backward(retain_graph=False)
-                        
-                        if np.isnan(loss.item()):
-                            print('PRED TRAIN TENSOR',Y_pred_train_Tensor)
-                            print('TRAIN TENSOR',Y_train_Tensor)
-                            return loss
-                        return loss
+                    # Backward pass: compute gradient of the loss with respect to model parameters
+                    loss.backward()
 
                     # Calling the step function on an Optimizer makes an update to its parameters
-                    loss = optimizer.step(closure)
+                    optimizer.step()
+
+                loss_data = loss.detach().data.item()
+                # adjust the optimizer lr
+                LR = scheduler.get_last_lr()[0]
+                scheduler.step()
+
 
                 # evaluate the validation set
-                if iter_i % 100 == 0:
+                if iter_i % 500 == 0:
                     model.eval()
 
                     perm_valid = torch.randperm(self.numtrain)
@@ -543,7 +559,6 @@ class TrainMod(object):
 
                     loss_valid /= nbatches
 
-                    loss_data = loss.detach().data.item()
                     loss_valid_data = loss_valid.detach().data.item()
 
                     iter_arr.append(iter_i)
@@ -553,31 +568,37 @@ class TrainMod(object):
                     maxres_loss.append(maxres)
 
                     fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
-                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.1,alpha=1.0,c='C0',label='Training')
-                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.1,alpha=1.0,c='C3',label='Validation')
+                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.2,alpha=1.0,c='C0',label='Training')
+                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.2,alpha=1.0,c='C3',label='Validation')
                     ax[0].legend()
                     ax[0].set_ylabel('log(L1 Loss per model)')
 
-                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.1,alpha=1.0,c='C4',label='max')
+                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.2,alpha=1.0,c='C4',label='max')
                     ax[1].set_ylabel('log(|Max Residual|)')
 
-                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.1,alpha=1.0,c='C2',label='median')
+                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.2,alpha=1.0,c='C2',label='median')
                     ax[2].set_xlabel('Iteration')
                     ax[2].set_ylabel('log(|Med Residual|)')
 
                     fig.savefig('{0}_loss_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
                     plt.close(fig)
 
-                    if iter_i % 100 == 0.0:
+                    if iter_i % 500 == 0.0:
                         try:
-                            total_memory, used_memory, free_memory = map(
-                                int, os.popen('free -t -g').readlines()[-1].split()[1:])
+
+                            if shutil.which('free') is not None:            
+                                total_memory, used_memory, free_memory = map(
+                                    int, os.popen('free -t -g').readlines()[-1].split()[1:])
+                            else:
+                                total_memory = 0
+                                used_memory = 0
+                                free_memory = 0                            
                         except:
                             pass
 
                         print (
-                            '--> Ep: {0:d} -- Iter {1:d}/{2:d} -- Time/iter: {3} -- Time: {4} -- Train Loss: {5:.6f} -- Valid Loss: {6:.6f} -- Mem Used: {7} GB'.format(
-                            int(epoch_i+1),int(iter_i+1),int(self.numsteps), datetime.now()-itertime, datetime.now(), loss_data, loss_valid_data, used_memory)
+                            '--> Ep: {0:d} -- Iter {1:d}/{2:d} -- Time/iter: {3} -- Time: {4} -- T Loss: {5:.4f} -- V Loss: {6:.4f} -- LR: {7} -- Mem Used: {8} GB'.format(
+                            int(epoch_i+1),int(iter_i+1),int(self.numsteps), datetime.now()-itertime, datetime.now(), loss_data, loss_valid_data, LR, used_memory)
                         )
                     sys.stdout.flush()                      
 
@@ -592,8 +613,6 @@ class TrainMod(object):
                 #     current_loss = loss_valid_data
                 #     break
 
-                # adjust the optimizer lr
-                scheduler.step()
                 
             # After Each Epoch, write network to output HDF5 file to save progress
             with h5py.File('{0}'.format(self.outfilename),'r+') as outfile_i:
@@ -612,8 +631,15 @@ class TrainMod(object):
                         print('Problem with {0}'.format(kk))
                         raise
             try:
-                total_memory, used_memory, free_memory = map(
-                    int, os.popen('free -t -g').readlines()[-1].split()[1:])
+                if shutil.which('free') is not None:            
+                    total_memory, used_memory, free_memory = map(
+                        int, os.popen('free -t -g').readlines()[-1].split()[1:])
+                    print('--- Final Memory Usage: {0} GB'.format(used_memory))
+                else:
+                    total_memory = 0
+                    used_memory = 0
+                    free_memory = 0
+                
             except:
                 pass
 

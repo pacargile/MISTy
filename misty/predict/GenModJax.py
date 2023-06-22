@@ -148,12 +148,14 @@ class Net(object):
 
 class modpred(object):
   """docstring for modpred"""
-  def __init__(self, nnpath=None, nntype='LinNet', normed=False):
+  def __init__(self, nnpath=None, nntype='LinNet', normed=False, trainage=False):
     super(modpred, self).__init__()
     if nnpath != None:
       self.nnpath = nnpath
     else:
       self.nnpath  = misty.__abspath__+'data/ANN/mistyNN.h5'
+
+    self.trainagebool = trainage
 
     self.anns = Net(nnpath=self.nnpath,nntype=nntype,normed=normed)
 
@@ -175,15 +177,26 @@ class modpred(object):
   def pred(self,inpars):
     return self.anns.eval(inpars)
 
-  def getMIST(self,eep=300, mass=1.0, feh=0.0, afe=0.0, **kwargs):
-    x = np.asarray([eep,mass,feh,afe])
-    # x = np.asarray([logage,mass,feh,afe])
+  def getMIST(self,**kwargs):
+
+    eep = kwargs.get('eep',300)
+    mass = kwargs.get('mass',1.0)
+    feh = kwargs.get('feh',0.0)
+    afe = kwargs.get('afe',0.)
+    logage = kwargs.get('logage',9.5)
+
+    if self.trainagebool:
+        x = np.asarray([logage,mass,feh,afe])
+    else:
+        x = np.asarray([eep,mass,feh,afe])
 
     modpred = self.pred(x)
     
     out = {}
-    # out['log_age'] = logage
-    out['EEP'] = eep
+    if self.trainagebool:
+        out['log(Age)'] = logage
+    else:
+        out['EEP'] = eep
     out['initial_Mass'] = mass
     out['initial_[Fe/H]'] = feh
     out['initial_[a/Fe]'] = afe
@@ -193,10 +206,13 @@ class modpred(object):
 
     out['log(g)'] = out.pop('log_g')
     out['log(Teff)'] = out.pop('log_Teff')
-    out['log(Age)'] = out.pop('log_age')
     out['Mass'] = out.pop('star_mass')
     out['log(R)'] = out.pop('log_R')
     out['log(L)'] = out.pop('log_L')
 
-    # out = [eep,mass,feh,afe,modpred[5],modpred[0],modpred[3],modpred[1],modpred[2],modpred[6],modpred[7],modpred[4]]
+    if self.trainagebool:
+        out['EEP'] = out.pop('EEP')
+    else:
+        out['log(Age)'] = out.pop('log_age')
+
     return out
