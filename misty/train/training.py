@@ -488,7 +488,7 @@ class TrainMod(object):
             # initialize the scheduler to adjust the learning rate
             # scheduler = StepLR(optimizer,10000,gamma=0.5,verbose=False)
             # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
-            scheduler = ExponentialLR(optimizer,gamma=1-(5E-5),verbose=False)
+            scheduler = ExponentialLR(optimizer,gamma=1-(5E-7),verbose=False)
 
             cc = 0
             for iter_i in range(int(self.numsteps)):
@@ -568,15 +568,24 @@ class TrainMod(object):
                     maxres_loss.append(maxres)
 
                     fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
-                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.2,alpha=1.0,c='C0',label='Training')
-                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.2,alpha=1.0,c='C3',label='Validation')
-                    ax[0].legend()
+                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0',label='Training')
+                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3',label='Validation')
+                    ax[0].legend(loc='upper center')
                     ax[0].set_ylabel('log(L1 Loss per model)')
 
-                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.2,alpha=1.0,c='C4',label='max')
+                    axins = ax[0].inset_axes([0.8, 0.8, 0.15, 0.15])
+                    # plot last 10% of learning curve in inset
+                    xlimbig = ax[0].get_xlim()
+                    llim = xlimbig[1] - 0.1 * (xlimbig[1]-xlimbig[0])
+                    mask = iter_arr >= llim
+                    axins.plot(iter_arr[mask],np.log10(training_loss[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0')
+                    axins.plot(iter_arr[mask],np.log10(validation_loss[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3')
+                    axins.set_xlim(llim,xlimbig[1])
+
+                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.5,alpha=1.0,c='C4',label='max')
                     ax[1].set_ylabel('log(|Max Residual|)')
 
-                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.2,alpha=1.0,c='C2',label='median')
+                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.5,alpha=1.0,c='C2',label='median')
                     ax[2].set_xlabel('Iteration')
                     ax[2].set_ylabel('log(|Med Residual|)')
 

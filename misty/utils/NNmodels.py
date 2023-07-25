@@ -140,7 +140,7 @@ class ResNet(nn.Module):
         encoded = self.encoder(x.T)
         decoded = self.decoder(encoded)
         return decoded.T
-
+        
     def normalize(self,x):
         # convert x into numpy to do math
         x_np = x.data.cpu().numpy()
