@@ -567,30 +567,31 @@ class TrainMod(object):
                     medres_loss.append(medres)
                     maxres_loss.append(maxres)
 
-                    fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
-                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0',label='Training')
-                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3',label='Validation')
-                    ax[0].legend(loc='upper center')
-                    ax[0].set_ylabel('log(L1 Loss per model)')
+                    if iter_i % 100 == 0:
+                        fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
+                        ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0',label='Training')
+                        ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3',label='Validation')
+                        ax[0].legend(loc='upper center')
+                        ax[0].set_ylabel('log(L1 Loss per model)')
 
-                    axins = ax[0].inset_axes([0.8, 0.8, 0.15, 0.15])
-                    # plot last 10% of learning curve in inset
-                    xlimbig = ax[0].get_xlim()
-                    llim = xlimbig[1] - 0.1 * (xlimbig[1]-xlimbig[0])
-                    mask = iter_arr >= llim
-                    axins.plot(iter_arr[mask],np.log10(training_loss[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0')
-                    axins.plot(iter_arr[mask],np.log10(validation_loss[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3')
-                    axins.set_xlim(llim,xlimbig[1])
+                        axins = ax[0].inset_axes([0.8, 0.8, 0.15, 0.15])
+                        # plot last 10% of learning curve in inset
+                        xlimbig = ax[0].get_xlim()
+                        llim = xlimbig[1] - 0.1 * (xlimbig[1]-xlimbig[0])
+                        mask = iter_arr >= llim
+                        axins.plot(np.array(iter_arr)[mask],np.log10(np.array(training_loss)[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0')
+                        axins.plot(np.array(iter_arr)[mask],np.log10(np.array(validation_loss)[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3')
+                        axins.set_xlim(llim,xlimbig[1])
 
-                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.5,alpha=1.0,c='C4',label='max')
-                    ax[1].set_ylabel('log(|Max Residual|)')
+                        ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.5,alpha=1.0,c='C4',label='max')
+                        ax[1].set_ylabel('log(|Max Residual|)')
 
-                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.5,alpha=1.0,c='C2',label='median')
-                    ax[2].set_xlabel('Iteration')
-                    ax[2].set_ylabel('log(|Med Residual|)')
+                        ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.5,alpha=1.0,c='C2',label='median')
+                        ax[2].set_xlabel('Iteration')
+                        ax[2].set_ylabel('log(|Med Residual|)')
 
-                    fig.savefig('{0}_loss_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
-                    plt.close(fig)
+                        fig.savefig('{0}_loss_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
+                        plt.close(fig)
 
                     if iter_i % 500 == 0.0:
                         try:
