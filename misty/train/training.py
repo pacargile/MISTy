@@ -574,7 +574,7 @@ class TrainMod(object):
                         ax[0].legend(loc='upper center')
                         ax[0].set_ylabel('log(L1 Loss per model)')
 
-                        axins = ax[0].inset_axes([0.8, 0.8, 0.15, 0.15])
+                        axins = ax[0].inset_axes([0.75, 0.75, 0.2, 0.2])
                         # plot last 10% of learning curve in inset
                         xlimbig = ax[0].get_xlim()
                         llim = xlimbig[1] - 0.1 * (xlimbig[1]-xlimbig[0])
@@ -582,6 +582,9 @@ class TrainMod(object):
                         axins.plot(np.array(iter_arr)[mask],np.log10(np.array(training_loss)[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0')
                         axins.plot(np.array(iter_arr)[mask],np.log10(np.array(validation_loss)[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3')
                         axins.set_xlim(llim,xlimbig[1])
+
+                        for lab_i in (axins.get_xticklabels() + axins.get_yticklabels()):
+                            lab_i.set_fontsize(5)
 
                         ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.5,alpha=1.0,c='C4',label='max')
                         ax[1].set_ylabel('log(|Max Residual|)')
