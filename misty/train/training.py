@@ -593,7 +593,7 @@ class TrainMod(object):
                         fig.savefig('{0}_loss_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
                         plt.close(fig)
 
-                    if iter_i % 500 == 0.0:
+                    if iter_i % 1000 == 0.0:
                         try:
 
                             if shutil.which('free') is not None:            
