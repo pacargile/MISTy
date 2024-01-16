@@ -17,8 +17,8 @@ from datetime import datetime
 from ..utils import NNmodels
 
 def defmod(D_in,H1,H2,H3,D_out,xmin,xmax,nntype='LinNet'):
-    if nntype == 'ResNet':
-        return NNmodels.ResNet(D_in,H1,H2,D_out,xmin,xmax)
+    if nntype == 'CNN':
+        return NNmodels.CNN(D_in,H1,H2,D_out,xmin,xmax)
     elif nntype == 'LinNet':
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out,xmin,xmax)
     else:
@@ -45,12 +45,12 @@ def readNN(nnpath,nntype='LinNet'):
         H3    = nnh5['model/lin5.weight'].shape[0]
         D_out = nnh5['model/lin6.weight'].shape[0]
     
-    if nntype == 'ResNet':
-        D_in      = nnh5['model/ConvTranspose1d.weight'].shape[1]
-        H1        = nnh5['model/lin1.weight'].shape[0]
-        H2        = nnh5['model/lin2.weight'].shape[0]
-        outputdim = len([x_i for x_i in list(nnh5['model'].keys()) if 'weight' in x_i])
-        D_out     = nnh5['model/lin{0}.weight'.format(outputdim)].shape[0]
+    if nntype == 'CNN':
+        D_in      = nnh5['model/encoder.0.weight'].shape[1]
+        H1        = nnh5['model/encoder.0.bias'].shape[0]
+        H2        = nnh5['model/encoder.2.bias'].shape[0]
+        H3 = None
+        D_out     = nnh5['model/encoder.6.bias'].shape[0]
     
     model = defmod(D_in,H1,H2,H3,D_out,xmin,xmax,nntype=nntype)
 

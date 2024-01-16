@@ -11,6 +11,7 @@ from torch.nn.functional import conv1d as tconv1d
 from torch.nn.functional import conv_transpose1d as tconv_transpose1d
 
 import jax.numpy as np
+
 from jax import lax
 from flax import linen
 import warnings
@@ -69,7 +70,7 @@ class Net(object):
 
             self.eval = self.evalLinNet
 
-        if nntype == 'ResNet':
+        if nntype == 'CNN':
 
             self.e_bias0   = nnh5['model/encoder.0.bias'][()]
             self.e_weight0 = nnh5['model/encoder.0.weight'][()]
@@ -299,6 +300,7 @@ class Net(object):
         # layer3 = self.conv1d(self.elu(layer2), self.e_weight4, bias=self.e_bias4, stride=1, padding=0)
         # layer4 = self.conv1d(self.elu(layer3), self.e_weight6, bias=self.e_bias6, stride=1, padding=0)
 
+        """
         # decoder
         layer5 = linen.ConvTranspose(
             features=128, kernel_size=(1,), padding=0, strides=(1,)).apply(
@@ -316,7 +318,8 @@ class Net(object):
             features=self.D_out, kernel_size=(1,), padding=1, strides=(1,)).apply(
                 {'params': {'kernel': np.transpose(self.d_weight6, (2,0,1)), 'bias': self.d_bias6}}, 
                 self.elu(layer7))
-
+        """
+        y_i = layer4
         # layer5 = self.conv_transpose1d(layer4,           self.d_weight0, bias=self.d_bias0, stride=1, padding=0)
         # layer6 = self.conv_transpose1d(self.elu(layer5), self.d_weight2, bias=self.d_bias2, stride=1, padding=0)
         # layer7 = self.conv_transpose1d(self.elu(layer6), self.d_weight4, bias=self.d_bias4, stride=2, padding=1, output_padding=1)
@@ -333,12 +336,14 @@ class Net(object):
 
 class modpred(object):
   """docstring for modpred"""
-  def __init__(self, nnpath=None, nntype='LinNet', normed=False, trainage=False):
+  def __init__(self, nnpath=None, nntype='LinNet', normed=False, trainage=False, applyspot=False):
     super(modpred, self).__init__()
     if nnpath != None:
       self.nnpath = nnpath
     else:
       self.nnpath  = misty.__abspath__+'data/ANN/mistyNN.h5'
+
+    self.applyspot = applyspot
 
     self.trainagebool = trainage
 
@@ -382,7 +387,7 @@ class modpred(object):
         out['log(Age)'] = logage
     else:
         out['EEP'] = eep
-    out['initial_Mass'] = mass
+    out['initial_Mass'] = mass 
     out['initial_[Fe/H]'] = feh
     out['initial_[a/Fe]'] = afe
 
@@ -395,9 +400,51 @@ class modpred(object):
     out['log(R)'] = out.pop('log_R')
     out['log(L)'] = out.pop('log_L')
 
+    if self.applyspot:
+        Told = 10.0**out['log(Teff)']
+        Rold = 10.0**out['log(R)']
+        gold = 10.0**out['log(g)']
+        
+        (Tnew,Rnew,gnew) = self.corretpars(Told,Rold,gold)
+
+        out['log(Teff)'] = np.log10(Tnew)
+        out['log(R)']    = np.log10(Rnew)
+        out['log(g)']    = np.log10(gnew)
+
     if self.trainagebool:
         out['EEP'] = out.pop('EEP')
     else:
         out['log(Age)'] = out.pop('log_age')
 
     return out
+
+  def corretpars(self,Told,Rold,gold):
+        beta = lax.cond(gold > 4.0, self.berdyugina_beta, lambda x: 0.0, Told)
+
+        beta = self.berdyugina_beta(Told)
+        gamma = self.berdyugina_gamma(Told)
+        alfa = 1.0 - beta
+
+        Tnew = (alfa*(Told**4.0) + beta*((Told*gamma)**4.0))**0.25
+        Rnew = Rold * (Told/Tnew)**2.0
+        gnew = gold * (Rold/Rnew)**2.0
+
+        return (Tnew,Rnew,gnew)
+
+  def berdyugina_beta(self,Teff):
+        cond = (Teff > 3098.89) & (Teff < 6101.11)
+        # cond = (Teff < 6101.11)
+        A = lax.cond(cond, lambda Teff : -1.77514793E-7, lambda Teff : 0.0, Teff)
+        B = lax.cond(cond, lambda Teff :  1.63313609E-3, lambda Teff : 0.0, Teff)
+        C = lax.cond(cond, lambda Teff : -3.35621302,    lambda Teff : 0.0, Teff)
+        return A*Teff*Teff + B*Teff + C
+
+        # a = lax.cond(cond, lambda Teff : 0.4, lambda Teff : 0.0, Teff)
+        # b = 1.0
+        # c = lax.cond(cond, lambda Teff : 7.5E-3,    lambda Teff : 0.0, Teff)
+        # d = lax.cond(cond, lambda Teff : 3500.0,    lambda Teff : 0.0, Teff)
+
+        # return a / (b + np.exp(c * (Teff-d)))        
+                
+  def berdyugina_gamma(self,Teff):
+      return 1.0 - 0.5 * self.berdyugina_beta(Teff)

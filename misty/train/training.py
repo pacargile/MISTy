@@ -59,8 +59,8 @@ def slicebatch(inlist,N):
     return [inlist[ii:ii+N] for ii in range(0,len(inlist),N)]
 
 def defmod(D_in,H1,H2,H3,D_out,xmin,xmax,NNtype='SMLP'):
-    if NNtype == 'ResNet':
-        return NNmodels.ResNet(D_in,H1,H2,D_out,xmin,xmax)
+    if NNtype == 'CNN':
+        return NNmodels.CNN(D_in,H1,H2,D_out,xmin,xmax)
     elif NNtype == 'LinNet':
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out,xmin,xmax)
     else:
@@ -508,7 +508,7 @@ class TrainMod(object):
 
                     optimizer.zero_grad()
                     Y_pred_train_Tensor = model(X_train_Tensor[idx])
-                    
+                                        
                     # Compute and print loss.
                     loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
 
@@ -525,7 +525,7 @@ class TrainMod(object):
 
 
                 # evaluate the validation set
-                if iter_i % 500 == 0:
+                if iter_i % 100 == 0:
                     model.eval()
 
                     perm_valid = torch.randperm(self.numtrain)
@@ -541,14 +541,22 @@ class TrainMod(object):
                         Y_pred_valid_Tensor = model(X_valid_Tensor[idx])                        
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor[idx])
 
-                        if (iter_i % 500 == 0) and (iter_i != 0) and (j == 0):
+                        if (iter_i % 100 == 0) and (iter_i != 0) and (j == 0):
                             print('--> Testing the model @ {}:'.format(iter_i))
-                            print('      Input Labels:')
-                            print(X_valid_Tensor[idx][:3])
-                            print('      Training Labels:')
-                            print(Y_valid_Tensor[idx][:3])
-                            print('      Predicted Labels:')
-                            print(Y_pred_valid_Tensor[:3])
+                            print('      Input Labels [min / max]:')
+                            print(X_valid_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_valid_Tensor[idx].max(axis=0)[0].tolist())
+                            print('      Difference in normalized tensors (Pred - Truth):')
+                            f = Y_pred_valid_Tensor - Y_valid_Tensor[idx]
+                            print('      Min:')
+                            print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
+                            print('      Max:')
+                            print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
+                            print('      Median:')
+                            print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
+                            # print('      Training Labels:')
+                            # print(Y_valid_Tensor[idx][:3])
+                            # print('      Predicted Labels:')
+                            # print(Y_pred_valid_Tensor[:3])
 
                         residual = torch.abs(Y_pred_valid_Tensor-Y_valid_Tensor[idx])
                         medres_i,maxres_i = float(residual.median()),float(residual.max())
@@ -567,34 +575,33 @@ class TrainMod(object):
                     medres_loss.append(medres)
                     maxres_loss.append(maxres)
 
-                    if iter_i % 100 == 0:
-                        fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
-                        ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0',label='Training')
-                        ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3',label='Validation')
-                        ax[0].legend(loc='upper center')
-                        ax[0].set_ylabel('log(L1 Loss per model)')
+                    fig,ax = plt.subplots(nrows=3,ncols=1,figsize=(8,8))
+                    ax[0].plot(iter_arr,np.log10(training_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0',label='Training')
+                    ax[0].plot(iter_arr,np.log10(validation_loss)-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3',label='Validation')
+                    ax[0].legend(loc='upper center')
+                    ax[0].set_ylabel('log(L1 Loss per model)')
 
-                        axins = ax[0].inset_axes([0.75, 0.75, 0.2, 0.2])
-                        # plot last 10% of learning curve in inset
-                        xlimbig = ax[0].get_xlim()
-                        llim = xlimbig[1] - 0.1 * (xlimbig[1]-xlimbig[0])
-                        mask = iter_arr >= llim
-                        axins.plot(np.array(iter_arr)[mask],np.log10(np.array(training_loss)[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C0')
-                        axins.plot(np.array(iter_arr)[mask],np.log10(np.array(validation_loss)[mask])-np.log10(self.numtrain),ls='-',lw=0.5,alpha=1.0,c='C3')
-                        axins.set_xlim(llim,xlimbig[1])
+                    axins = ax[0].inset_axes([0.75, 0.75, 0.225, 0.225])
+                    # plot last 10% of learning curve in inset
+                    xlimbig = ax[0].get_xlim()
+                    llim = xlimbig[1] - 0.1 * (xlimbig[1]-xlimbig[0])
+                    mask = iter_arr >= llim
+                    axins.plot(np.array(iter_arr)[mask],np.log10(np.array(training_loss)[mask])-np.log10(self.numtrain),ls='-',lw=1.0,alpha=1.0,c='C0')
+                    axins.plot(np.array(iter_arr)[mask],np.log10(np.array(validation_loss)[mask])-np.log10(self.numtrain),ls='-',lw=1.0,alpha=1.0,c='C3')
+                    axins.set_xlim(llim,xlimbig[1])
 
-                        for lab_i in (axins.get_xticklabels() + axins.get_yticklabels()):
-                            lab_i.set_fontsize(5)
+                    for lab_i in (axins.get_xticklabels() + axins.get_yticklabels()):
+                        lab_i.set_fontsize(5)
 
-                        ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.5,alpha=1.0,c='C4',label='max')
-                        ax[1].set_ylabel('log(|Max Residual|)')
+                    ax[1].plot(iter_arr,np.log10(maxres_loss),ls='-',lw=0.5,alpha=1.0,c='C4',label='max')
+                    ax[1].set_ylabel('log(|Max Residual|)')
 
-                        ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.5,alpha=1.0,c='C2',label='median')
-                        ax[2].set_xlabel('Iteration')
-                        ax[2].set_ylabel('log(|Med Residual|)')
+                    ax[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.5,alpha=1.0,c='C2',label='median')
+                    ax[2].set_xlabel('Iteration')
+                    ax[2].set_ylabel('log(|Med Residual|)')
 
-                        fig.savefig('{0}_loss_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
-                        plt.close(fig)
+                    fig.savefig('{0}_loss_epoch{1}.png'.format(self.outfilename.replace('.h5',''),epoch_i+1),dpi=150)
+                    plt.close(fig)
 
                     if iter_i % 1000 == 0.0:
                         try:

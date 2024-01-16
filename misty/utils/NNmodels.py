@@ -97,10 +97,10 @@ class LinNet(nn.Module):
         xout = (x_np-self.xmin)/(self.xmax-self.xmin) - 0.5
         return Variable(torch.from_numpy(xout).type(dtype))
 
-# ResNet convolutional neural network (two convolutional layers)
-class ResNet(nn.Module):
+# Convolutional neural network (two convolutional layers)
+class CNN(nn.Module):
     def __init__(self, D_in, H1, H2, D_out, xmin, xmax):
-        super(ResNet, self).__init__()
+        super(CNN, self).__init__()
 
         self.xmin = xmin
         self.xmax = xmax
@@ -115,23 +115,23 @@ class ResNet(nn.Module):
         act = nn.ELU()
 
         self.encoder = nn.Sequential(
-            nn.Conv1d(in_channels=self.D_in, out_channels=128, kernel_size=1, stride=1, padding=1), # 1D 128 kernels of length=36
+            nn.Conv1d(in_channels=self.D_in, out_channels=self.H1, kernel_size=1, stride=1, padding=1), # 1D 128 kernels of length=36
             act,
-            nn.Conv1d(in_channels=128, out_channels=256, kernel_size=3, stride=2, padding=1), # 1D 4*64 kernels of length=18
+            nn.Conv1d(in_channels=self.H1, out_channels=self.H2, kernel_size=3, stride=2, padding=1), # 1D 4*64 kernels of length=18
             act,
-            nn.Conv1d(in_channels=256, out_channels=128, kernel_size=14, stride=1), # 1D 128 kernels of length=1
+            nn.Conv1d(in_channels=self.H2, out_channels=self.H1, kernel_size=14, stride=1), # 1D 128 kernels of length=1
             act,
-            nn.Conv1d(in_channels=128, out_channels=self.D_out, kernel_size=1, stride=1) # NiN 71 channels of length=1
+            nn.Conv1d(in_channels=self.H1, out_channels=self.D_out, kernel_size=1, stride=1) # NiN 71 channels of length=1
         )
 
         self.decoder = nn.Sequential(
-            nn.ConvTranspose1d(in_channels=self.D_out, out_channels=128, kernel_size=1, stride=1),
+            nn.ConvTranspose1d(in_channels=self.D_out, out_channels=self.H1, kernel_size=1, stride=1),
             act,
-            nn.ConvTranspose1d(in_channels=128, out_channels=256, kernel_size=14, stride=1),
+            nn.ConvTranspose1d(in_channels=self.H1, out_channels=self.H2, kernel_size=14, stride=1),
             act,
-            nn.ConvTranspose1d(in_channels=256, out_channels=128, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.ConvTranspose1d(in_channels=self.H2, out_channels=self.H1, kernel_size=3, stride=2, padding=1, output_padding=1),
             act,
-            nn.ConvTranspose1d(in_channels=128, out_channels=self.D_out, kernel_size=1, stride=1, padding=1, output_padding=0)
+            nn.ConvTranspose1d(in_channels=self.H1, out_channels=self.D_out, kernel_size=1, stride=1, padding=1, output_padding=0)
         )
     
     def forward(self, x):
