@@ -13,7 +13,7 @@ from torch.nn.functional import conv_transpose1d as tconv_transpose1d
 import jax.numpy as np
 
 from jax import lax
-from flax import linen
+# from flax import linen
 import warnings
 import h5py
 import time,sys,os,glob
@@ -141,6 +141,43 @@ class Net(object):
             y = y_i
 
         return y
+
+    def evalLinNet2(self,x):        
+        # x = np.array([x])
+        N = x.shape[0]
+        
+        c1 = np.repeat(self.bias1, N).reshape((self.bias1.shape[0], N))
+        c2 = np.repeat(self.bias2, N).reshape((self.bias2.shape[0], N))
+        c3 = np.repeat(self.bias3, N).reshape((self.bias3.shape[0], N))
+        c4 = np.repeat(self.bias4, N).reshape((self.bias4.shape[0], N))
+        c5 = np.repeat(self.bias5, N).reshape((self.bias5.shape[0], N))
+        c6 = np.repeat(self.bias6, N).reshape((self.bias6.shape[0], N))        
+        
+        x_i = self.norm(x).T
+
+        print(x_i.shape)
+
+        # layer1 = np.matmul(self.weight1, x_i)                  + self.bias1
+        # layer2 = np.matmul(self.weight2, self.sigmoid(layer1)) + self.bias2
+        # layer3 = np.matmul(self.weight3, self.sigmoid(layer2)) + self.bias3
+        # layer4 = np.matmul(self.weight4, self.sigmoid(layer3)) + self.bias4
+        # layer5 = np.matmul(self.weight5, self.sigmoid(layer4)) + self.bias5
+        # y_i    = np.matmul(self.weight6, self.sigmoid(layer5)) + self.bias6
+
+        layer1 = np.matmul(self.weight1, x_i)                  + c1
+        layer2 = np.matmul(self.weight2, self.sigmoid(layer1)) + c2
+        layer3 = np.matmul(self.weight3, self.sigmoid(layer2)) + c3
+        layer4 = np.matmul(self.weight4, self.sigmoid(layer3)) + c4
+        layer5 = np.matmul(self.weight5, self.sigmoid(layer4)) + c5
+        y_i    = np.matmul(self.weight6, self.sigmoid(layer5)) + c6
+
+        if self.normed:
+            y = np.array([self.unnorm(yy,ii) for ii,yy in enumerate(y_i)])
+        else:
+            y = y_i
+
+        return y
+        
 
     def elu(self,x):
         return (x >= 0.0) * x + (x < 0.0) * (np.exp(x) - 1.0)
@@ -421,7 +458,7 @@ class modpred(object):
   def corretpars(self,Told,Rold,gold):
         beta = lax.cond(gold > 4.0, self.berdyugina_beta, lambda x: 0.0, Told)
 
-        beta = self.berdyugina_beta(Told)
+        # beta = self.berdyugina_beta(Told)
         gamma = self.berdyugina_gamma(Told)
         alfa = 1.0 - beta
 
