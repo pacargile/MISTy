@@ -1,14 +1,17 @@
-import torch
-from torch import nn
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-if str(device) != 'cpu':
-  dtype = torch.cuda.FloatTensor
-else:
-  dtype = torch.FloatTensor
-from torch.autograd import Variable
-import torch.nn.functional as F
-from torch.nn.functional import conv1d as tconv1d
-from torch.nn.functional import conv_transpose1d as tconv_transpose1d
+# import torch
+# from torch import nn
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# if str(device) != 'cpu':
+#   dtype = torch.cuda.FloatTensor
+# else:
+#   dtype = torch.FloatTensor
+# from torch.autograd import Variable
+# import torch.nn.functional as F
+# from torch.nn.functional import conv1d as tconv1d
+# from torch.nn.functional import conv_transpose1d as tconv_transpose1d
+
+import jax
+jax.config.update("jax_enable_x64", True)
 
 import jax.numpy as np
 
