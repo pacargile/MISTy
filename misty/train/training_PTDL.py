@@ -61,7 +61,7 @@ class TrainMod(object):
 
         # taining details
         self.trainper  = kwargs.get('trainper',0.9)
-        self.numiters  = kwargs.get('numiters',int(1e+4))
+        self.numiters  = int(kwargs.get('numiters',1e+4))
         self.numepochs = kwargs.get('numepochs',10)
         self.batchsize = kwargs.get('batchsize',1000)
 
