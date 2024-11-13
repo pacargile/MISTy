@@ -1,32 +1,14 @@
 import torch
 from torch import nn
 
-# try:
-#     cudabool = torch.has_cuda
-# except:
-#     cudabool = False
-# try:
-#     mpsbool = torch.has_mps
-# except:
-#     mpsbool = False
-
-# if cudabool:
-#     device = torch.device('cuda:0')
-# # elif mpsbool:
-# #     device = torch.device('mps')
-# else:
-#     device = torch.device('cpu')
-
-# if device == 'cuda:0':
-#     dtype = torch.cuda.FloatTensor
-# else:
-#     dtype = torch.FloatTensor
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-if str(device) != 'cpu':
-  dtype = torch.cuda.FloatTensor
+
+if str(device) == "cuda:0":
+    dtype = torch.cuda.FloatTensor
 else:
-  dtype = torch.FloatTensor
+    # if torch.backends.mps.is_available():
+    #     device = torch.device("mps:0")
+    dtype = torch.FloatTensor
 
 from torch.autograd import Variable
 
