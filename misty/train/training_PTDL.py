@@ -56,6 +56,9 @@ class TrainMod(object):
     def __init__(self, *arg, **kwargs):
         super(TrainMod, self).__init__()
 
+        print(f'... Start Training Code at {datetime.now()}')
+        sys.stdout.flush()
+
         # turn on/off log plotting
         self.logplot = kwargs.get('logplot',True)
 
@@ -141,6 +144,7 @@ class TrainMod(object):
         # initialzie class to pull models
         print('... Pulling a first set of models for test set')
         print('... Reading {0:.2f} of grid for test models from {1}'.format(1.0-self.trainper,self.mistpath))
+        sys.stdout.flush()
         test_mistmods = readmist.readmist(
             mistpath=self.mistpath,
             norm=False,
@@ -339,7 +343,7 @@ class TrainMod(object):
 
         # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         # optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
-        optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate, weight_decay=1E-3)
+        optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate, weight_decay=1E-5,decoupled_weight_decay=True)
 
         # initialize the scheduler to adjust the learning rate
         # scheduler = StepLR(optimizer,10000,gamma=0.5,verbose=False)
@@ -531,14 +535,14 @@ class TrainMod(object):
 
                 if iter_i % 1000 == 0.0:
                     if self.logplot:
-                        ax3[0].plot(iter_arr,np.log10(training_loss),ls='-',lw=0.5,alpha=1.0,c='C0',label='Training')
-                        ax3[0].plot(iter_arr,np.log10(validation_loss),ls='-',lw=0.5,alpha=1.0,c='C3',label='Validation')
+                        ax3[0].plot(iter_arr,np.log10(training_loss),ls='-',lw=0.5,alpha=0.5,c='C0',label='Training')
+                        ax3[0].plot(iter_arr,np.log10(validation_loss),ls='-',lw=0.5,alpha=0.5,c='C3',label='Validation')
                         # ax3[0].legend(loc='upper center')
 
                         # plot last 10% of learning curve in inset
                         mask = np.array(iter_arr) >= llim
-                        axins1.plot(np.array(iter_arr)[mask],np.log10(np.array(training_loss)[mask]),ls='-',lw=1.0,alpha=1.0,c='C0')
-                        axins1.plot(np.array(iter_arr)[mask],np.log10(np.array(validation_loss)[mask]),ls='-',lw=1.0,alpha=1.0,c='C3')
+                        axins1.plot(np.array(iter_arr)[mask],np.log10(np.array(training_loss)[mask]),ls='-',lw=0.5,alpha=0.5,c='C0')
+                        axins1.plot(np.array(iter_arr)[mask],np.log10(np.array(validation_loss)[mask]),ls='-',lw=0.5,alpha=0.5,c='C3')
                         try:
                             ul = max([max(np.log10(np.array(validation_loss)[mask])),max(np.log10(np.array(training_loss)[mask]))]) + 1E-5
                             ll = min([min(np.log10(np.array(validation_loss)[mask])),min(np.log10(np.array(training_loss)[mask]))]) - 1E-5
@@ -546,9 +550,9 @@ class TrainMod(object):
                         except ValueError:
                             pass
 
-                        ax3[1].plot(iter_arr,np.log10(stdres_loss),ls='-',lw=0.5,alpha=1.0,c='C4',label='std')
+                        ax3[1].plot(iter_arr,np.log10(stdres_loss),ls='-',lw=0.5,alpha=0.5,c='C4',label='std')
 
-                        ax3[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.5,alpha=1.0,c='C2',label='median')
+                        ax3[2].plot(iter_arr,np.log10(medres_loss),ls='-',lw=0.5,alpha=0.5,c='C2',label='median')
 
                         # plot last 10% of learning curve in inset
                         axins2.plot(np.array(iter_arr)[mask],np.log10(medres_loss)[mask],ls='-',lw=1.0,alpha=1.0,c='C2')                                   
