@@ -48,6 +48,8 @@ def defmod(D_in,H1,H2,H3,D_out,xmin,xmax,NNtype='LinNet'):
         return NNmodels.CNN(D_in,H1,H2,D_out,xmin,xmax)
     elif NNtype == 'LinNet':
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out,xmin,xmax)
+    elif NNtype == 'MLP':
+        return NNmodels.MLP(D_in,H1,H2,H3,D_out,xmin,xmax)
     else:
         return NNmodels.SMLP(D_in,H1,H2,H3,D_out,xmin,xmax)
 

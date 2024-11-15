@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from collections import OrderedDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -71,6 +72,36 @@ class LinNet(nn.Module):
         out4 = torch.sigmoid(self.lin4(out3))
         out5 = torch.sigmoid(self.lin5(out4))
         y_i = self.lin6(out5)
+        return y_i     
+
+    def encode(self,x):
+        # convert x into numpy to do math
+        x_np = x.data.cpu().numpy()
+        xout = (x_np-self.xmin)/(self.xmax-self.xmin) - 0.5
+        return Variable(torch.from_numpy(xout).type(dtype))
+
+# linear feed-foward model with sigmoid activation functions
+class MLP(nn.Module):  
+    def __init__(self, D_in, H1, H2, H3, D_out, xmin, xmax):
+        super(MLP, self).__init__()
+
+        self.xmin = xmin
+        self.xmax = xmax
+
+        self.mlp = nn.Sequential(OrderedDict([
+            ('lin1',nn.Linear(D_in, H1)),
+            ('af1',nn.Sigmoid()),
+            ('lin2',nn.Linear(H1,H2)),
+            ('af2',nn.Sigmoid()),
+            ('lin3',nn.Linear(H2,H3)),
+            ('af3',nn.Sigmoid()),
+            ('lin4',nn.Linear(H3,D_out)), 
+        ]))
+
+
+    def forward(self, x):
+        x_i = self.encode(x)
+        y_i = self.mlp(x_i)
         return y_i     
 
     def encode(self,x):

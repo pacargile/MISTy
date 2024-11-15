@@ -15,6 +15,8 @@ jax.config.update("jax_enable_x64", True)
 
 import jax.numpy as np
 
+from flax import nnx
+
 from jax import lax
 # from flax import linen
 import warnings
@@ -72,6 +74,45 @@ class Net(object):
             self.weight6 = nnh5['model/lin6.weight'][()]
 
             self.eval = self.evalLinNet
+
+        if (nntype == 'MLP'):
+            self.bias1 = np.array(nnh5['model/mlp.lin1.bias'][()])
+            self.bias2 = np.array(nnh5['model/mlp.lin2.bias'][()])
+            self.bias3 = np.array(nnh5['model/mlp.lin3.bias'][()])
+            self.bias4 = np.array(nnh5['model/mlp.lin4.bias'][()])
+
+            self.weight1 = np.transpose(np.array(nnh5['model/mlp.lin1.weight'][()]),(1,0))
+            self.weight2 = np.transpose(np.array(nnh5['model/mlp.lin2.weight'][()]),(1,0))
+            self.weight3 = np.transpose(np.array(nnh5['model/mlp.lin3.weight'][()]),(1,0))
+            self.weight4 = np.transpose(np.array(nnh5['model/mlp.lin4.weight'][()]),(1,0))
+
+            self.lin1 = nnx.Linear(in_features=self.weight1.shape[0],out_features=self.weight1.shape[1],rngs=nnx.Rngs(0))
+            self.lin1.kernel = nnx.Param(value=self.weight1)
+            self.lin1.bias = nnx.Param(value=self.bias1)
+
+            self.lin2 = nnx.Linear(in_features=self.weight2.shape[0],out_features=self.weight2.shape[1],rngs=nnx.Rngs(0))
+            self.lin2.kernel = nnx.Param(value=self.weight2)
+            self.lin2.bias = nnx.Param(value=self.bias2)
+
+            self.lin3 = nnx.Linear(in_features=self.weight3.shape[0],out_features=self.weight3.shape[1],rngs=nnx.Rngs(0))
+            self.lin3.kernel = nnx.Param(value=self.weight3)
+            self.lin3.bias = nnx.Param(value=self.bias3)
+
+            self.lin4 = nnx.Linear(in_features=self.weight4.shape[0],out_features=self.weight4.shape[1],rngs=nnx.Rngs(0))
+            self.lin4.kernel = nnx.Param(value=self.weight4)
+            self.lin4.bias = nnx.Param(value=self.bias4)
+            
+            # self.mlp = nnx.Sequential([
+            #     lin1,
+            #     nnx.sigmoid,
+            #     lin2,
+            #     nnx.sigmoid,
+            #     lin3,
+            #     nnx.sigmoid,
+            #     lin4,
+            # ])
+
+            self.eval = self.evalMLP
 
         if nntype == 'CNN':
 
@@ -137,6 +178,28 @@ class Net(object):
         layer4  = np.einsum('ij,j->i', self.weight4, self.sigmoid(layer3)) + self.bias4
         layer5  = np.einsum('ij,j->i', self.weight5, self.sigmoid(layer4)) + self.bias5
         y_i     = np.einsum('ij,j->i', self.weight6, self.sigmoid(layer5)) + self.bias6
+
+        if self.normed:
+            y = np.array([self.unnorm(yy,ii) for ii,yy in enumerate(y_i)])
+        else:
+            y = y_i
+
+        return y
+
+    def evalMLP(self,x):
+        x_i = self.norm(x)
+
+        y1 = self.lin1(x_i)
+        y2 = self.lin2(nnx.sigmoid(y1))
+        y3 = self.lin3(nnx.sigmoid(y2))
+        y_i = self.lin4(nnx.sigmoid(y3))
+
+        # y_i = self.mlp(x_i)
+
+        # layer1  = np.einsum('ij,j->i', self.weight1, x_i)                  + self.bias1
+        # layer2  = np.einsum('ij,j->i', self.weight2, self.sigmoid(layer1)) + self.bias2
+        # layer3  = np.einsum('ij,j->i', self.weight3, self.sigmoid(layer2)) + self.bias3
+        # y_i     = np.einsum('ij,j->i', self.weight4, self.sigmoid(layer3)) + self.bias4
 
         if self.normed:
             y = np.array([self.unnorm(yy,ii) for ii,yy in enumerate(y_i)])
