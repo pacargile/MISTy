@@ -102,15 +102,15 @@ class Net(object):
             self.lin4.kernel = nnx.Param(value=self.weight4)
             self.lin4.bias = nnx.Param(value=self.bias4)
             
-            # self.mlp = nnx.Sequential([
-            #     lin1,
-            #     nnx.sigmoid,
-            #     lin2,
-            #     nnx.sigmoid,
-            #     lin3,
-            #     nnx.sigmoid,
-            #     lin4,
-            # ])
+            self.mlp = nnx.Sequential([
+                self.lin1,
+                nnx.sigmoid,
+                self.lin2,
+                nnx.sigmoid,
+                self.lin3,
+                nnx.sigmoid,
+                self.lin4,
+            ])
 
             self.eval = self.evalMLP
 
@@ -189,12 +189,12 @@ class Net(object):
     def evalMLP(self,x):
         x_i = self.norm(x)
 
-        y1 = self.lin1(x_i)
-        y2 = self.lin2(nnx.sigmoid(y1))
-        y3 = self.lin3(nnx.sigmoid(y2))
-        y_i = self.lin4(nnx.sigmoid(y3))
+        # y1 = self.lin1(x_i)
+        # y2 = self.lin2(nnx.sigmoid(y1))
+        # y3 = self.lin3(nnx.sigmoid(y2))
+        # y_i = self.lin4(nnx.sigmoid(y3))
 
-        # y_i = self.mlp(x_i)
+        y_i = self.mlp(x_i)
 
         # layer1  = np.einsum('ij,j->i', self.weight1, x_i)                  + self.bias1
         # layer2  = np.einsum('ij,j->i', self.weight2, self.sigmoid(layer1)) + self.bias2
