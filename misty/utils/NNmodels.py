@@ -90,11 +90,14 @@ class MLP(nn.Module):
 
         self.mlp = nn.Sequential(OrderedDict([
             ('lin1',nn.Linear(D_in, H1)),
-            ('af1',nn.Sigmoid()),
+            # ('af1',nn.Sigmoid()),
+            ('af1',nn.GELU()),
             ('lin2',nn.Linear(H1,H2)),
-            ('af2',nn.Sigmoid()),
+            # ('af2',nn.Sigmoid()),
+            ('af2',nn.GELU()),
             ('lin3',nn.Linear(H2,H3)),
-            ('af3',nn.Sigmoid()),
+            # ('af3',nn.Sigmoid()),
+            ('af3',nn.GELU()),
             ('lin4',nn.Linear(H3,D_out)), 
         ]))
 

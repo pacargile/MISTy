@@ -102,15 +102,18 @@ class Net(object):
             self.lin4.kernel = nnx.Param(value=self.weight4)
             self.lin4.bias = nnx.Param(value=self.bias4)
             
-            self.mlp = nnx.Sequential([
+            self.mlp = nnx.Sequential(
                 self.lin1,
-                nnx.sigmoid,
+                # nnx.sigmoid,
+                nnx.gelu,
                 self.lin2,
-                nnx.sigmoid,
+                # nnx.sigmoid,
+                nnx.gelu,
                 self.lin3,
-                nnx.sigmoid,
+                # nnx.sigmoid,
+                nnx.gelu,
                 self.lin4,
-            ])
+            )
 
             self.eval = self.evalMLP
 
@@ -188,19 +191,8 @@ class Net(object):
 
     def evalMLP(self,x):
         x_i = self.norm(x)
-
-        # y1 = self.lin1(x_i)
-        # y2 = self.lin2(nnx.sigmoid(y1))
-        # y3 = self.lin3(nnx.sigmoid(y2))
-        # y_i = self.lin4(nnx.sigmoid(y3))
-
         y_i = self.mlp(x_i)
-
-        # layer1  = np.einsum('ij,j->i', self.weight1, x_i)                  + self.bias1
-        # layer2  = np.einsum('ij,j->i', self.weight2, self.sigmoid(layer1)) + self.bias2
-        # layer3  = np.einsum('ij,j->i', self.weight3, self.sigmoid(layer2)) + self.bias3
-        # y_i     = np.einsum('ij,j->i', self.weight4, self.sigmoid(layer3)) + self.bias4
-
+        
         if self.normed:
             y = np.array([self.unnorm(yy,ii) for ii,yy in enumerate(y_i)])
         else:

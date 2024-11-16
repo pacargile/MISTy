@@ -313,8 +313,8 @@ class TrainMod(object):
         train_dataloader = DataLoader(train_mistmods, batch_size=self.batchsize,shuffle=True)
         valid_dataloader = DataLoader(valid_mistmods, batch_size=self.batchsize,shuffle=True)
 
-        numtrain = len(train_dataloader)
-        nbatches = numtrain // self.batchsize
+        nbatches = len(train_dataloader)
+        numtrain = nbatches * self.batchsize
         
         print(f'... Number of epochs: {self.numepochs}')
         print(f'... Number of training steps: {self.numiters}')
