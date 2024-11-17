@@ -113,6 +113,12 @@ class Net(object):
                 # nnx.sigmoid,
                 nnx.gelu,
                 self.lin4,
+                # nnx.sigmoid,
+                nnx.gelu,
+                self.lin5,
+                # nnx.sigmoid,
+                nnx.gelu,
+                self.lin6,
             )
 
             self.eval = self.evalMLP

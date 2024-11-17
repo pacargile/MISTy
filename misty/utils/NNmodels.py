@@ -98,7 +98,13 @@ class MLP(nn.Module):
             ('lin3',nn.Linear(H2,H3)),
             # ('af3',nn.Sigmoid()),
             ('af3',nn.GELU()),
-            ('lin4',nn.Linear(H3,D_out)), 
+            ('lin4',nn.Linear(H3,H3)),
+            # ('af4',nn.Sigmoid()),
+            ('af4',nn.GELU()),
+            ('lin5',nn.Linear(H3,H3)),
+            # ('af4',nn.Sigmoid()),
+            ('af5',nn.GELU()),
+            ('lin6',nn.Linear(H3,D_out)), 
         ]))
 
 
