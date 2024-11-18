@@ -80,11 +80,15 @@ class Net(object):
             self.bias2 = np.array(nnh5['model/mlp.lin2.bias'][()])
             self.bias3 = np.array(nnh5['model/mlp.lin3.bias'][()])
             self.bias4 = np.array(nnh5['model/mlp.lin4.bias'][()])
+            self.bias5 = np.array(nnh5['model/mlp.lin5.bias'][()])
+            self.bias6 = np.array(nnh5['model/mlp.lin6.bias'][()])
 
             self.weight1 = np.transpose(np.array(nnh5['model/mlp.lin1.weight'][()]),(1,0))
             self.weight2 = np.transpose(np.array(nnh5['model/mlp.lin2.weight'][()]),(1,0))
             self.weight3 = np.transpose(np.array(nnh5['model/mlp.lin3.weight'][()]),(1,0))
             self.weight4 = np.transpose(np.array(nnh5['model/mlp.lin4.weight'][()]),(1,0))
+            self.weight5 = np.transpose(np.array(nnh5['model/mlp.lin5.weight'][()]),(1,0))
+            self.weight6 = np.transpose(np.array(nnh5['model/mlp.lin6.weight'][()]),(1,0))
 
             self.lin1 = nnx.Linear(in_features=self.weight1.shape[0],out_features=self.weight1.shape[1],rngs=nnx.Rngs(0))
             self.lin1.kernel = nnx.Param(value=self.weight1)
@@ -101,6 +105,14 @@ class Net(object):
             self.lin4 = nnx.Linear(in_features=self.weight4.shape[0],out_features=self.weight4.shape[1],rngs=nnx.Rngs(0))
             self.lin4.kernel = nnx.Param(value=self.weight4)
             self.lin4.bias = nnx.Param(value=self.bias4)
+
+            self.lin5 = nnx.Linear(in_features=self.weight5.shape[0],out_features=self.weight5.shape[1],rngs=nnx.Rngs(0))
+            self.lin5.kernel = nnx.Param(value=self.weight5)
+            self.lin5.bias = nnx.Param(value=self.bias5)
+
+            self.lin6 = nnx.Linear(in_features=self.weight6.shape[0],out_features=self.weight6.shape[1],rngs=nnx.Rngs(0))
+            self.lin6.kernel = nnx.Param(value=self.weight6)
+            self.lin6.bias = nnx.Param(value=self.bias6)
             
             self.mlp = nnx.Sequential(
                 self.lin1,

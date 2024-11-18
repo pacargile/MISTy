@@ -52,6 +52,14 @@ def readNN(nnpath,nntype='LinNet'):
         H3 = None
         D_out     = nnh5['model/encoder.6.bias'].shape[0]
     
+    if nntype == 'MLP':
+        D_in  = nnh5['model/mlp.lin1.weight'].shape[1]
+        H1    = nnh5['model/mlp.lin1.weight'].shape[0]
+        H2    = nnh5['model/mlp.lin4.weight'].shape[0]
+        H3    = nnh5['model/mlp.lin5.weight'].shape[0]
+        D_out = nnh5['model/mlp.lin6.weight'].shape[0]
+      
+    
     model = defmod(D_in,H1,H2,H3,D_out,xmin,xmax,nntype=nntype)
 
     model.D_in = D_in

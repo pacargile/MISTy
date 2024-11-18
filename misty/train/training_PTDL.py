@@ -122,8 +122,8 @@ class TrainMod(object):
         self.fehrange  = kwargs.get('feh',[-10.0,10.0])
         self.aferange  = kwargs.get('afe',[-10.0,10.0])
 
-        self.restartfile = kwargs.get('restartfile',False)
-        if self.restartfile is not False:
+        self.restartfile = kwargs.get('restartfile',None)
+        if self.restartfile is not None:
             print('... Restarting File: {0}'.format(self.restartfile))
 
         # output hdf5 file name
@@ -247,7 +247,7 @@ class TrainMod(object):
 
         # determine if user wants to start from old file, or
         # create a new ANN model
-        if self.restartfile is not False:
+        if self.restartfile is not None:
             # create a model
             if os.path.isfile(self.restartfile):
                 print('Restarting from File: {0} with NNtype: {1}'.format(self.restartfile,self.NNtype))
@@ -265,6 +265,10 @@ class TrainMod(object):
             sys.stdout.flush()
             model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,
                 self.xmin,self.xmax,NNtype=self.NNtype)
+
+        print('Model Arch:')
+        print(model)
+
 
         # set up model to start training
         model.to(device)
@@ -343,14 +347,15 @@ class TrainMod(object):
         # initialize the optimizer
         learning_rate = self.lr
 
-        # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,fused=True)
         # optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
-        optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate, weight_decay=1E-5,decoupled_weight_decay=True)
+        # optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate, weight_decay=1E-5,decoupled_weight_decay=True)
+        optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,fused=True)
 
         # initialize the scheduler to adjust the learning rate
         # scheduler = StepLR(optimizer,10000,gamma=0.5,verbose=False)
         # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
-        scheduler = ExponentialLR(optimizer,gamma=0.5)
+        scheduler = ExponentialLR(optimizer,gamma=0.75)
 
         fig1,ax1 = plt.subplots(nrows=2,ncols=2,figsize=(8,8),constrained_layout=True)
         fig2,ax2 = plt.subplots(nrows=4,ncols=2,figsize=(10,10),constrained_layout=True)
