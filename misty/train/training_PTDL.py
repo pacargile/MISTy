@@ -339,7 +339,7 @@ class TrainMod(object):
             pass
 
         # initialize the loss function
-        loss_fn = torch.nn.MSELoss(reduction='mean')
+        loss_fn = torch.nn.MSELoss()#reduction='mean')
         # loss_fn = torch.nn.SmoothL1Loss(reduction='sum')
         # loss_fn = torch.nn.KLDivLoss(size_average=False)
         # loss_fn = torch.nn.L1Loss(reduction = 'sum')
