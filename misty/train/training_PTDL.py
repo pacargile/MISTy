@@ -347,10 +347,10 @@ class TrainMod(object):
         # initialize the optimizer
         learning_rate = self.lr
 
-        # optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,fused=True)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,fused=True)
         # optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
         # optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate, weight_decay=1E-5,decoupled_weight_decay=True)
-        optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,fused=True)
+        # optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,fused=True)
 
         # initialize the scheduler to adjust the learning rate
         # scheduler = StepLR(optimizer,10000,gamma=0.5,verbose=False)
