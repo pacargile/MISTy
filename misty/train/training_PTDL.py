@@ -355,7 +355,7 @@ class TrainMod(object):
         # initialize the scheduler to adjust the learning rate
         # scheduler = StepLR(optimizer,10000,gamma=0.5,verbose=False)
         # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
-        scheduler = ExponentialLR(optimizer,gamma=0.75)
+        scheduler = ExponentialLR(optimizer,gamma=1-(5E-8))
 
         fig1,ax1 = plt.subplots(nrows=2,ncols=2,figsize=(8,8),constrained_layout=True)
         fig2,ax2 = plt.subplots(nrows=4,ncols=2,figsize=(10,10),constrained_layout=True)
@@ -496,34 +496,34 @@ class TrainMod(object):
 
                 # evaluate the validation set
                 if (iter_i % 100 == 0) | (iter_i == 1):
-                    model.eval()
-
-                    loss_valid = 0
-                    medres = 0
-                    stdres = 0
-
-                    Y_pred_valid_Tensor = model(X_valid_Tensor)                        
-                    loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor)
-                    loss_valid_data = loss_valid.detach().data.item()
-
-                #         if (iter_i % 100 == 0) and (iter_i != 0) and (j == 0):
-                #             print('--> Testing the model @ {}:'.format(iter_i))
-                #             print('      Input Labels [min / max]:')
-                #             print(X_valid_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_valid_Tensor[idx].max(axis=0)[0].tolist())
-                #             print('      Difference in normalized tensors (Pred - Truth):')
-                #             f = Y_pred_valid_Tensor - Y_valid_Tensor[idx]
-                #             print('      Min:')
-                #             print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
-                #             print('      Max:')
-                #             print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
-                #             print('      Median:')
-                #             print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
-                #             # print('      Training Labels:')
-                #             # print(Y_valid_Tensor[idx][:3])
-                #             # print('      Predicted Labels:')
-                #             # print(Y_pred_valid_Tensor[:3])
-
                     if self.logplot:
+                        model.eval()
+
+                        loss_valid = 0
+                        medres = 0
+                        stdres = 0
+
+                        Y_pred_valid_Tensor = model(X_valid_Tensor)                        
+                        loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor)
+                        loss_valid_data = loss_valid.detach().data.item()
+
+                    #         if (iter_i % 100 == 0) and (iter_i != 0) and (j == 0):
+                    #             print('--> Testing the model @ {}:'.format(iter_i))
+                    #             print('      Input Labels [min / max]:')
+                    #             print(X_valid_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_valid_Tensor[idx].max(axis=0)[0].tolist())
+                    #             print('      Difference in normalized tensors (Pred - Truth):')
+                    #             f = Y_pred_valid_Tensor - Y_valid_Tensor[idx]
+                    #             print('      Min:')
+                    #             print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
+                    #             print('      Max:')
+                    #             print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
+                    #             print('      Median:')
+                    #             print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
+                    #             # print('      Training Labels:')
+                    #             # print(Y_valid_Tensor[idx][:3])
+                    #             # print('      Predicted Labels:')
+                    #             # print(Y_pred_valid_Tensor[:3])
+
                         residual = torch.abs(Y_pred_valid_Tensor-Y_valid_Tensor)
                         medres_i,stdres_i = float(residual.median()),float(residual.std())
                         if medres_i > medres:
@@ -539,7 +539,9 @@ class TrainMod(object):
                         validation_loss.append(loss_valid_data)
                         stdres_loss.append(stdres)
                         medres_loss.append(medres)
-
+                    else:
+                        loss_valid_data = np.nan
+                        
                 if iter_i % 1000 == 0.0:
                     if self.logplot:
                         ax3[0].plot(iter_arr,np.log10(training_loss),ls='-',lw=0.5,alpha=0.5,c='C0',label='Training')
