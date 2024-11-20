@@ -139,10 +139,10 @@ class readmist(Dataset):
         # default set of min-max values
         self.minmax = ({
             'EEP':[1,808],
-            'initial_mass':[0.25,1.0],
+            'initial_mass':[0.25,1.5],
             'initial_[Fe/H]':[-4,0.5],
             'initial_[a/Fe]':[-0.2,0.6],
-            'star_mass':[0.25,1.0],
+            'star_mass':[0.25,1.5],
             'log_L':[-3.0,5.0],
             'log_Teff':[np.log10(2500.0),np.log10(50000.0)],
             'log_R':[-2.0,4.0],
