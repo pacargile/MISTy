@@ -69,6 +69,8 @@ class TrainMod(object):
         self.numiters  = int(kwargs.get('numiters',1e+4))
         self.numepochs = kwargs.get('numepochs',10)
         self.batchsize = kwargs.get('batchsize',1000)
+        self.nminibatches = kwargs.get('nminibatches',10)
+        self.minibatchsize = kwargs.get('minibatchsize',20480)
 
         # starting learning rate
         self.lr = kwargs.get('lr',1E-4)
@@ -137,6 +139,8 @@ class TrainMod(object):
 
         # the output predictions are normed
         self.norm = kwargs.get('norm',True)
+        
+        print(f'... Running with Normalized Y: {self.norm}')
 
         # use eepprior in training
         self.eepprior = kwargs.get('eepprior',False)
@@ -269,7 +273,6 @@ class TrainMod(object):
         print('Model Arch:')
         print(model)
 
-
         # set up model to start training
         model.to(device)
 
@@ -294,7 +297,7 @@ class TrainMod(object):
 
         train_mistmods = readmist.readmist(
             mistpath=self.mistpath,
-            norm=True,
+            norm=self.norm,
             returntorch=True,
             type='train',
             trainpercentage=self.trainper,
@@ -305,7 +308,7 @@ class TrainMod(object):
             )
         valid_mistmods = readmist.readmist(
             mistpath=self.mistpath,
-            norm=True,
+            norm=self.norm,
             returntorch=True,
             type='valid',
             trainpercentage=self.trainper,
@@ -339,15 +342,15 @@ class TrainMod(object):
             pass
 
         # initialize the loss function
-        loss_fn = torch.nn.MSELoss(reduction='sum')
-        # loss_fn = torch.nn.SmoothL1Loss(reduction='sum')
-        # loss_fn = torch.nn.KLDivLoss(size_average=False)
-        # loss_fn = torch.nn.L1Loss(reduction = 'sum')
+        # loss_fn = torch.nn.MSELoss()
+        loss_fn = torch.nn.MSELoss(reduction='mean')
+        # loss_fn = torch.nn.SmoothL1Loss()
+        # loss_fn = torch.nn.L1Loss()
 
         # initialize the optimizer
         learning_rate = self.lr
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate,fused=True)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         # optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
         # optimizer = torch.optim.RAdam(model.parameters(), lr=learning_rate, weight_decay=1E-5,decoupled_weight_decay=True)
         # optimizer = torch.optim.SGD(model.parameters(),lr=learning_rate,fused=True)
@@ -416,14 +419,25 @@ class TrainMod(object):
 
             fig1.savefig('{0}_trainingset_T.png'.format(self.outfilename.replace('.h5','')),dpi=150)
 
-            ax2[0,0].hist(train_mistmods.unnormf(train_labelsout[:,0],'star_mass'),bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
-            ax2[0,1].hist(train_mistmods.unnormf(train_labelsout[:,1],'log_L'),    bins=25, alpha=0.5, histtype='stepfilled')
-            ax2[1,0].hist(train_mistmods.unnormf(train_labelsout[:,2],'log_Teff'), bins=25, alpha=0.5, histtype='stepfilled')
-            ax2[1,1].hist(train_mistmods.unnormf(train_labelsout[:,3],'log_R'),    bins=25, alpha=0.5, histtype='stepfilled')
-            ax2[2,0].hist(train_mistmods.unnormf(train_labelsout[:,4],'log_g'),    bins=25, alpha=0.5, histtype='stepfilled')
-            ax2[2,1].hist(train_mistmods.unnormf(train_labelsout[:,5],'log_age'),  bins=25, alpha=0.5, histtype='stepfilled')
-            ax2[3,0].hist(train_mistmods.unnormf(train_labelsout[:,6],'[Fe/H]'),   bins=25, alpha=0.5, histtype='stepfilled')
-            ax2[3,1].hist(train_mistmods.unnormf(train_labelsout[:,7],'[a/Fe]'),   bins=25, alpha=0.5, histtype='stepfilled')
+            if self.norm:
+                ax2[0,0].hist(train_mistmods.unnormf(train_labelsout[:,0],'star_mass'),bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
+                ax2[0,1].hist(train_mistmods.unnormf(train_labelsout[:,1],'log_L'),    bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[1,0].hist(train_mistmods.unnormf(train_labelsout[:,2],'log_Teff'), bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[1,1].hist(train_mistmods.unnormf(train_labelsout[:,3],'log_R'),    bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[2,0].hist(train_mistmods.unnormf(train_labelsout[:,4],'log_g'),    bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[2,1].hist(train_mistmods.unnormf(train_labelsout[:,5],'log_age'),  bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[3,0].hist(train_mistmods.unnormf(train_labelsout[:,6],'[Fe/H]'),   bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[3,1].hist(train_mistmods.unnormf(train_labelsout[:,7],'[a/Fe]'),   bins=25, alpha=0.5, histtype='stepfilled')
+            else:
+                ax2[0,0].hist(train_labelsout[:,0], bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
+                ax2[0,1].hist(train_labelsout[:,1], bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[1,0].hist(train_labelsout[:,2], bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[1,1].hist(train_labelsout[:,3], bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[2,0].hist(train_labelsout[:,4], bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[2,1].hist(train_labelsout[:,5], bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[3,0].hist(train_labelsout[:,6], bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[3,1].hist(train_labelsout[:,7], bins=25, alpha=0.5, histtype='stepfilled')
+                
 
             ax2[0,0].legend()
             ax2[0,0].set_xlabel('Mass')
@@ -478,24 +492,65 @@ class TrainMod(object):
 
                 itertime = datetime.now()
 
-                optimizer.zero_grad()
-                Y_pred_train_Tensor = model(X_train_Tensor)
+                perm = torch.randperm(len(X_train_Tensor))
+                if str(device) != 'cpu':
+                    perm = perm.to(device)
+
+                for t in range(self.nminibatches):
+                    steptime = datetime.now()
+
+                    idx = perm[t * self.minibatchsize : (t+1) * self.minibatchsize]
+
+                    optimizer.zero_grad()
+                    Y_pred_train_Tensor = model(X_train_Tensor[idx])
+                                        
+                    # Compute and print loss.
+                    loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
+
+                    # Backward pass: compute gradient of the loss with respect to model parameters
+                    loss.backward()
+
+                    # Calling the step function on an Optimizer makes an update to its parameters
+                    optimizer.step()
+                
+                
+                # Y_pred_train_Tensor = model(X_train_Tensor)
                                     
-                # Compute and print loss.
-                loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor)
+                # # Compute and print loss.
+                # loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor)
 
-                # Backward pass: compute gradient of the loss with respect to model parameters
-                loss.backward()
-
-                # Calling the step function on an Optimizer makes an update to its parameters
-                optimizer.step()
+                # # Backward pass: compute gradient of the loss with respect to model parameters
+                # loss.backward()
+                # optimizer.step()
+                # optimizer.zero_grad()
 
                 loss_data = loss.detach().data.item()
                 # adjust the optimizer lr
                 LR = scheduler.get_last_lr()[0]
 
                 # evaluate the validation set
-                if (iter_i % 100 == 0) | (iter_i == 1):
+                if (iter_i % 2000 == 0) | (iter_i == 1):
+                    # print('X',X_train_Tensor[idx],X_train_Tensor[idx].shape)
+                    # print('Ypred',Y_pred_train_Tensor,Y_pred_train_Tensor.shape)
+                    # print('Ytrain',Y_train_Tensor[idx], Y_train_Tensor[idx].shape)
+                    # print('delta(Y)',(Y_pred_train_Tensor-Y_train_Tensor[idx])/Y_train_Tensor[idx])
+
+                    print('--> Testing the model @ {}:'.format(iter_i))
+                    print('      Input Labels [min / max]:')
+                    print(self.label_i)
+                    print(X_train_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_train_Tensor[idx].max(axis=0)[0].tolist())
+                    print('      Output Labels [min / max]:')
+                    print(self.label_o)
+                    print(Y_train_Tensor[idx].min(axis=0)[0].tolist(),' / ',Y_train_Tensor[idx].max(axis=0)[0].tolist())
+                    print('     Percent Difference in Training Data: (Pred - Truth):')
+                    f = (Y_pred_train_Tensor - Y_train_Tensor[idx])
+                    print('      Min:')
+                    print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
+                    print('      Max:')
+                    print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
+                    print('      Median:')
+                    print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
+                    
                     if self.logplot:
                         model.eval()
 
@@ -507,22 +562,22 @@ class TrainMod(object):
                         loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor)
                         loss_valid_data = loss_valid.detach().data.item()
 
-                    #         if (iter_i % 100 == 0) and (iter_i != 0) and (j == 0):
-                    #             print('--> Testing the model @ {}:'.format(iter_i))
-                    #             print('      Input Labels [min / max]:')
-                    #             print(X_valid_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_valid_Tensor[idx].max(axis=0)[0].tolist())
-                    #             print('      Difference in normalized tensors (Pred - Truth):')
-                    #             f = Y_pred_valid_Tensor - Y_valid_Tensor[idx]
-                    #             print('      Min:')
-                    #             print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
-                    #             print('      Max:')
-                    #             print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
-                    #             print('      Median:')
-                    #             print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
-                    #             # print('      Training Labels:')
-                    #             # print(Y_valid_Tensor[idx][:3])
-                    #             # print('      Predicted Labels:')
-                    #             # print(Y_pred_valid_Tensor[:3])
+                        # if (iter_i % 100 == 0) and (iter_i != 0) and (j == 0):
+                        #     print('--> Testing the model @ {}:'.format(iter_i))
+                        #     print('      Input Labels [min / max]:')
+                        #     print(X_valid_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_valid_Tensor[idx].max(axis=0)[0].tolist())
+                        #     print('      Difference in normalized tensors (Pred - Truth):')
+                        #     f = Y_pred_valid_Tensor - Y_valid_Tensor[idx]
+                        #     print('      Min:')
+                        #     print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
+                        #     print('      Max:')
+                        #     print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
+                        #     print('      Median:')
+                        #     print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
+                        # print('      Training Labels:')
+                        # print(Y_valid_Tensor[idx][:3])
+                        # print('      Predicted Labels:')
+                        # print(Y_pred_valid_Tensor[:3])
 
                         residual = torch.abs(Y_pred_valid_Tensor-Y_valid_Tensor)
                         medres_i,stdres_i = float(residual.median()),float(residual.std())
