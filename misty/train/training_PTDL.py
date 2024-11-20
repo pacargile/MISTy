@@ -461,15 +461,15 @@ class TrainMod(object):
             Y_train_Tensor = Variable(Y_train_labels.type(dtype), requires_grad=False)
             Y_train_Tensor = Y_train_Tensor.to(device)
 
-            # create tensor for input training labels
-            X_valid_labels = valid_labelsin
-            X_valid_Tensor = Variable(X_valid_labels.type(dtype), requires_grad=False)
-            X_valid_Tensor = X_valid_Tensor.to(device)
+            # # create tensor for input training labels
+            # X_valid_labels = valid_labelsin
+            # X_valid_Tensor = Variable(X_valid_labels.type(dtype), requires_grad=False)
+            # X_valid_Tensor = X_valid_Tensor.to(device)
 
-            # create tensor of output training labels
-            Y_valid_labels = valid_labelsout
-            Y_valid_Tensor = Variable(Y_valid_labels.type(dtype), requires_grad=False)
-            Y_valid_Tensor = Y_valid_Tensor.to(device)
+            # # create tensor of output training labels
+            # Y_valid_labels = valid_labelsout
+            # Y_valid_Tensor = Variable(Y_valid_labels.type(dtype), requires_grad=False)
+            # Y_valid_Tensor = Y_valid_Tensor.to(device)
 
             print('... Pulling Training & Validation Took {0}'.format(datetime.now()-epochtime))
 
@@ -530,26 +530,22 @@ class TrainMod(object):
 
                 # evaluate the validation set
                 if (iter_i % 2000 == 0) | (iter_i == 1):
-                    # print('X',X_train_Tensor[idx],X_train_Tensor[idx].shape)
-                    # print('Ypred',Y_pred_train_Tensor,Y_pred_train_Tensor.shape)
-                    # print('Ytrain',Y_train_Tensor[idx], Y_train_Tensor[idx].shape)
-                    # print('delta(Y)',(Y_pred_train_Tensor-Y_train_Tensor[idx])/Y_train_Tensor[idx])
 
-                    # print('--> Testing the model @ {}:'.format(iter_i))
-                    # print('      Input Labels [min / max]:')
-                    # print(self.label_i)
-                    # print(X_train_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_train_Tensor[idx].max(axis=0)[0].tolist())
-                    # print('      Output Labels [min / max]:')
-                    # print(self.label_o)
-                    # print(Y_train_Tensor[idx].min(axis=0)[0].tolist(),' / ',Y_train_Tensor[idx].max(axis=0)[0].tolist())
-                    # print('     Percent Difference in Training Data: (Pred - Truth):')
-                    # f = (Y_pred_train_Tensor - Y_train_Tensor[idx])
-                    # print('      Min:')
-                    # print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
-                    # print('      Max:')
-                    # print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
-                    # print('      Median:')
-                    # print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
+                    print('--> Testing the model @ {}:'.format(iter_i))
+                    print('      Input Labels [min / max]:')
+                    print(self.label_i)
+                    print(X_train_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_train_Tensor[idx].max(axis=0)[0].tolist())
+                    print('      Output Labels [min / max]:')
+                    print(self.label_o)
+                    print(Y_train_Tensor[idx].min(axis=0)[0].tolist(),' / ',Y_train_Tensor[idx].max(axis=0)[0].tolist())
+                    print('     Percent Difference in Training Data: (Pred - Truth):')
+                    f = (Y_pred_train_Tensor - Y_train_Tensor[idx])
+                    print('      Min:')
+                    print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
+                    print('      Max:')
+                    print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
+                    print('      Median:')
+                    print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
                     
                     if self.logplot:
                         model.eval()
