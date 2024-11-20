@@ -10,6 +10,9 @@ else:
     #     device = torch.device("mps:0")
     dtype = torch.FloatTensor
 
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+
 from torch.autograd import Variable
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau,ExponentialLR
@@ -461,15 +464,15 @@ class TrainMod(object):
             Y_train_Tensor = Variable(Y_train_labels.type(dtype), requires_grad=False)
             Y_train_Tensor = Y_train_Tensor.to(device)
 
-            # # create tensor for input training labels
-            # X_valid_labels = valid_labelsin
-            # X_valid_Tensor = Variable(X_valid_labels.type(dtype), requires_grad=False)
-            # X_valid_Tensor = X_valid_Tensor.to(device)
+            # create tensor for input training labels
+            X_valid_labels = valid_labelsin
+            X_valid_Tensor = Variable(X_valid_labels.type(dtype), requires_grad=False)
+            X_valid_Tensor = X_valid_Tensor.to(device)
 
-            # # create tensor of output training labels
-            # Y_valid_labels = valid_labelsout
-            # Y_valid_Tensor = Variable(Y_valid_labels.type(dtype), requires_grad=False)
-            # Y_valid_Tensor = Y_valid_Tensor.to(device)
+            # create tensor of output training labels
+            Y_valid_labels = valid_labelsout
+            Y_valid_Tensor = Variable(Y_valid_labels.type(dtype), requires_grad=False)
+            Y_valid_Tensor = Y_valid_Tensor.to(device)
 
             print('... Pulling Training & Validation Took {0}'.format(datetime.now()-epochtime))
 
