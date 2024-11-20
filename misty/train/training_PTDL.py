@@ -73,7 +73,7 @@ class TrainMod(object):
         self.numepochs = kwargs.get('numepochs',10)
         self.batchsize = kwargs.get('batchsize',1000)
         self.nminibatches = kwargs.get('nminibatches',10)
-        self.minibatchsize = kwargs.get('minibatchsize',20480)
+        self.minibatchsize = kwargs.get('minibatchsize',2048)
 
         # starting learning rate
         self.lr = kwargs.get('lr',1E-4)
