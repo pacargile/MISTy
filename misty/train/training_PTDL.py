@@ -495,37 +495,37 @@ class TrainMod(object):
 
                 itertime = datetime.now()
 
-                perm = torch.randperm(len(X_train_Tensor))
-                if str(device) != 'cpu':
-                    perm = perm.to(device)
+                # perm = torch.randperm(len(X_train_Tensor))
+                # if str(device) != 'cpu':
+                #     perm = perm.to(device)
 
-                for t in range(self.nminibatches):
-                    steptime = datetime.now()
+                # for t in range(self.nminibatches):
+                #     steptime = datetime.now()
 
-                    idx = perm[t * self.minibatchsize : (t+1) * self.minibatchsize]
+                #     idx = perm[t * self.minibatchsize : (t+1) * self.minibatchsize]
 
-                    optimizer.zero_grad()
-                    Y_pred_train_Tensor = model(X_train_Tensor[idx])
+                #     optimizer.zero_grad()
+                #     Y_pred_train_Tensor = model(X_train_Tensor[idx])
                                         
-                    # Compute and print loss.
-                    loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
+                #     # Compute and print loss.
+                #     loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor[idx])
 
-                    # Backward pass: compute gradient of the loss with respect to model parameters
-                    loss.backward()
+                #     # Backward pass: compute gradient of the loss with respect to model parameters
+                #     loss.backward()
 
-                    # Calling the step function on an Optimizer makes an update to its parameters
-                    optimizer.step()
+                #     # Calling the step function on an Optimizer makes an update to its parameters
+                #     optimizer.step()
                 
                 
-                # Y_pred_train_Tensor = model(X_train_Tensor)
+                Y_pred_train_Tensor = model(X_train_Tensor)
                                     
-                # # Compute and print loss.
-                # loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor)
+                # Compute and print loss.
+                loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor)
 
-                # # Backward pass: compute gradient of the loss with respect to model parameters
-                # loss.backward()
-                # optimizer.step()
-                # optimizer.zero_grad()
+                # Backward pass: compute gradient of the loss with respect to model parameters
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
 
                 loss_data = loss.detach().data.item()
                 # adjust the optimizer lr
@@ -537,12 +537,12 @@ class TrainMod(object):
                     print('--> Testing the model @ {}:'.format(iter_i))
                     print('      Input Labels [min / max]:')
                     print(self.label_i)
-                    print(X_train_Tensor[idx].min(axis=0)[0].tolist(),' / ',X_train_Tensor[idx].max(axis=0)[0].tolist())
+                    print(X_train_Tensor.min(axis=0)[0].tolist(),' / ',X_train_Tensor.max(axis=0)[0].tolist())
                     print('      Output Labels [min / max]:')
                     print(self.label_o)
-                    print(Y_train_Tensor[idx].min(axis=0)[0].tolist(),' / ',Y_train_Tensor[idx].max(axis=0)[0].tolist())
+                    print(Y_train_Tensor.min(axis=0)[0].tolist(),' / ',Y_train_Tensor.max(axis=0)[0].tolist())
                     print('     Percent Difference in Training Data: (Pred - Truth):')
-                    f = (Y_pred_train_Tensor - Y_train_Tensor[idx])
+                    f = (Y_pred_train_Tensor - Y_train_Tensor)
                     print('      Min:')
                     print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
                     print('      Max:')
@@ -662,10 +662,6 @@ class TrainMod(object):
                 #     current_loss = loss_valid_data
                 #     break
 
-            scheduler.step()
-            plt.close(fig1)
-            plt.close(fig2)
-            plt.close(fig3)
                 
             # After Each Epoch, write network to output HDF5 file to save progress
             with h5py.File('{0}'.format(self.outfilename),'r+') as outfile_i:
@@ -701,6 +697,11 @@ class TrainMod(object):
             # check if this is last epoch, if so break loop
             if epoch_i+1 == self.numepochs:
                 break
+            scheduler.step()
+            plt.close(fig1)
+            plt.close(fig2)
+            plt.close(fig3)
+            torch.cuda.empty_cache()
 
         print('Finished training model, took: {0}'.format(
             datetime.now()-starttime))
