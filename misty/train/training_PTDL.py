@@ -37,7 +37,7 @@ from datetime import datetime
 
 from ..utils import NNmodels
 from ..utils import readmist_PTDL as readmist
-from ..predict import GenMod
+from ..predict import GenMod_PTDL as GenMod
 # from ..predict import GenModJax as GenMod
 
 def slicebatch(inlist,N):
@@ -46,15 +46,11 @@ def slicebatch(inlist,N):
     '''
     return [inlist[ii:ii+N] for ii in range(0,len(inlist),N)]
 
-def defmod(D_in,H1,H2,H3,D_out,xmin,xmax,NNtype='LinNet'):
-    if NNtype == 'CNN':
-        return NNmodels.CNN(D_in,H1,H2,D_out,xmin,xmax)
-    elif NNtype == 'LinNet':
-        return NNmodels.LinNet(D_in,H1,H2,H3,D_out,xmin,xmax)
-    elif NNtype == 'MLP':
-        return NNmodels.MLP(D_in,H1,H2,H3,D_out,xmin,xmax)
+def defmod(D_in,H1,H2,H3,D_out,NNtype='MLP'):
+    if NNtype == 'LinNet':
+        return NNmodels.LinNet(D_in,H1,H2,H3,D_out)
     else:
-        return NNmodels.SMLP(D_in,H1,H2,H3,D_out,xmin,xmax)
+        return NNmodels.MLP(D_in,H1,H2,H3,D_out)
 
 class TrainMod(object):
     """docstring for TrainMod"""
@@ -83,49 +79,38 @@ class TrainMod(object):
         self.H2 = kwargs.get('H2',256)
         self.H3 = kwargs.get('H3',256)
 
-        # set if user wants to train on age or on EEP, default is EEP
-        self.trainagebool = kwargs.get('trainage',False)
-        print('... Training on Age: {}'.format(self.trainagebool))
-
         # create list of in labels and out labels
         if 'label_i' in kwargs:
             self.label_i = kwargs['label_i']
         else:
-            if self.trainagebool:
-                self.label_i = ['initial_mass','initial_[Fe/H]','initial_[a/Fe]','log_age']
-            else:
-                self.label_i = ['EEP','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
+            self.label_i = ['EEP','initial_mass','initial_[Fe/H]','initial_[a/Fe]']
         if 'label_o'in kwargs:
             self.label_o = kwargs['label_o']
         else:
-            if self.trainagebool:
-                self.label_o = ([
-                    'EEP',
-                    'star_mass',
-                    'log_L',
-                    'log_Teff',
-                    'log_R',
-                    'log_g',
-                    '[Fe/H]',
-                    '[a/Fe]',
-                    ])
-            else:
-                self.label_o = ([
-                    'star_mass',
-                    'log_L',
-                    'log_Teff',
-                    'log_R',
-                    'log_g',
-                    'log_age',
-                    '[Fe/H]',
-                    '[a/Fe]',
-                    ])
+            self.label_o = ([
+                'star_mass',
+                'log_L',
+                'log_Teff',
+                'log_R',
+                'log_g',
+                'log_age',
+                '[Fe/H]',
+                '[a/Fe]',
+                ])
 
         # check for user defined ranges for atm models
-        self.eeprange  = kwargs.get('eep',[0.0,1000000.0])
-        self.massrange = kwargs.get('mass',[-1.0,10000.0])
-        self.fehrange  = kwargs.get('feh',[-10.0,10.0])
-        self.aferange  = kwargs.get('afe',[-10.0,10.0])
+        defaultparrange = ({
+            'EEP':[0.0,1000000.0],
+            'initial_mass':[-1.0,10000.0],
+            'initial_[Fe/H]':[-10.0,10.0],
+            'initial_[a/Fe]':[-10.0,10.0],
+            })
+        self.parrange = kwargs.get('parrange',defaultparrange)
+
+        # self.eeprange  = kwargs.get('eep',[0.0,1000000.0])
+        # self.massrange = kwargs.get('mass',[-1.0,10000.0])
+        # self.fehrange  = kwargs.get('feh',[-10.0,10.0])
+        # self.aferange  = kwargs.get('afe',[-10.0,10.0])
 
         self.restartfile = kwargs.get('restartfile',None)
         if self.restartfile is not None:
@@ -143,7 +128,7 @@ class TrainMod(object):
         # the output predictions are normed
         self.norm = kwargs.get('norm',True)
         
-        print(f'... Running with Normalized Y: {self.norm}')
+        print(f'... Running with normalized labels: {self.norm}')
 
         # use eepprior in training
         self.eepprior = kwargs.get('eepprior',False)
@@ -156,22 +141,24 @@ class TrainMod(object):
         sys.stdout.flush()
         test_mistmods = readmist.readmist(
             mistpath=self.mistpath,
+            label_i=self.label_i,
+            label_o=self.label_o,
             norm=False,
             returntorch=False,
             type='test',
             trainpercentage=self.trainper,
-            eep=self.eeprange,
-            mass=self.massrange,
-            feh=self.fehrange,
-            afe=self.aferange,
+            parrange=self.parrange,
             )
         print(f'... Total number of test models: {len(test_mistmods)}')        
         test_dataloader = DataLoader(test_mistmods, batch_size=len(test_mistmods),shuffle=True)
 
         testdata = next(iter(test_dataloader))
+
+        self.datacond_in  = np.array([np.where(test_mistmods.columns == val)[0][0] for val in self.label_i],dtype=int)
+        self.datacond_out = np.array([np.where(test_mistmods.columns == val)[0][0] for val in self.label_o],dtype=int)
         
-        self.datacond_in  = np.in1d(test_mistmods.columns,self.label_i)
-        self.datacond_out = np.in1d(test_mistmods.columns,self.label_o)
+        # self.datacond_in  = np.in1d(test_mistmods.columns,self.label_i)
+        # self.datacond_out = np.in1d(test_mistmods.columns,self.label_o)
         
         self.test_labelsin  = testdata[:,self.datacond_in]
         self.test_labelsout = testdata[:,self.datacond_out]
@@ -181,15 +168,20 @@ class TrainMod(object):
         sys.stdout.flush()
 
         # determine normalization values
-        self.xmin = np.array([test_mistmods.minmax[x][0] 
-            for x in self.label_i])
-        self.xmax = np.array([test_mistmods.minmax[x][1] 
-            for x in self.label_i])
+        # self.xmin = np.array([test_mistmods.minmax[x][0] 
+        #     for x in self.label_i])
+        # self.xmax = np.array([test_mistmods.minmax[x][1] 
+        #     for x in self.label_i])
 
-        self.ymin = np.array([test_mistmods.minmax[x][0]
-            for x in self.label_o])
-        self.ymax = np.array([test_mistmods.minmax[x][1] 
-            for x in self.label_o])
+        # self.ymin = np.array([test_mistmods.minmax[x][0]
+        #     for x in self.label_o])
+        # self.ymax = np.array([test_mistmods.minmax[x][1] 
+        #     for x in self.label_o])
+
+        if self.norm:
+            self.normfactor = test_mistmods.normfactor
+        else:
+            self.normfactor = None
 
         # D_in is input dimension
         # D_out is output dimension
@@ -199,6 +191,31 @@ class TrainMod(object):
         print('... Din: {}, Dout: {}'.format(self.D_in,self.D_out))
         print('... Input Labels: {}'.format(self.label_i))
         print('... Output Labels: {}'.format(self.label_o))
+
+        # initialize the output file
+        with h5py.File('{0}'.format(self.outfilename),'w') as outfile_i:
+            try:
+                outfile_i.create_dataset('testlabels_in',
+                    data=self.test_labelsin)
+                outfile_i.create_dataset('testlabels_out',
+                    data=self.test_labelsout)
+                outfile_i.create_dataset('label_i',
+                    data=np.array([x.encode("ascii", "ignore") for x in self.label_i]))
+                outfile_i.create_dataset('label_o',
+                    data=np.array([x.encode("ascii", "ignore") for x in self.label_o]))
+                if self.norm:
+                    for kk in self.label_i:                
+                        outfile_i.create_dataset(f'norm_i/{kk}',data=np.array(self.normfactor[kk]))
+                    for kk in self.label_o:                
+                        outfile_i.create_dataset(f'norm_o/{kk}',data=np.array(self.normfactor[kk]))
+                
+                # outfile_i.create_dataset('xmin',data=np.array(self.xmin))
+                # outfile_i.create_dataset('xmax',data=np.array(self.xmax))
+                # outfile_i.create_dataset('ymin',data=np.array(self.ymin))
+                # outfile_i.create_dataset('ymax',data=np.array(self.ymax))
+            except:
+                print('!!! PROBLEM WITH WRITING TO HDF5 !!!')
+                raise
 
         print('... Finished Init')
         sys.stdout.flush()
@@ -264,14 +281,12 @@ class TrainMod(object):
             else:
                 print('Could Not Find Restart File, Creating a New NN model')
                 sys.stdout.flush()
-                model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,
-                    self.xmin,self.xmax,NNtype=self.NNtype)        
+                model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,NNtype=self.NNtype)        
         else:
             # initialize the model
             print('Running New NN with NNtype: {0}'.format(self.NNtype))
             sys.stdout.flush()
-            model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,
-                self.xmin,self.xmax,NNtype=self.NNtype)
+            model = defmod(self.D_in,self.H1,self.H2,self.H3,self.D_out,NNtype=self.NNtype)
 
         print('Model Arch:')
         print(model)
@@ -279,46 +294,25 @@ class TrainMod(object):
         # set up model to start training
         model.to(device)
 
-        # initialize the output file
-        with h5py.File('{0}'.format(self.outfilename),'w') as outfile_i:
-            try:
-                outfile_i.create_dataset('testlabels_in',
-                    data=self.test_labelsin)
-                outfile_i.create_dataset('testlabels_out',
-                    data=self.test_labelsout)
-                outfile_i.create_dataset('label_i',
-                    data=np.array([x.encode("ascii", "ignore") for x in self.label_i]))
-                outfile_i.create_dataset('label_o',
-                    data=np.array([x.encode("ascii", "ignore") for x in self.label_o]))
-                outfile_i.create_dataset('xmin',data=np.array(self.xmin))
-                outfile_i.create_dataset('xmax',data=np.array(self.xmax))
-                outfile_i.create_dataset('ymin',data=np.array(self.ymin))
-                outfile_i.create_dataset('ymax',data=np.array(self.ymax))
-            except:
-                print('!!! PROBLEM WITH WRITING TO HDF5 !!!')
-                raise
-
         train_mistmods = readmist.readmist(
             mistpath=self.mistpath,
+            label_i=self.label_i,
+            label_o=self.label_o,
             norm=self.norm,
             returntorch=True,
             type='train',
             trainpercentage=self.trainper,
-            eep=self.eeprange,
-            mass=self.massrange,
-            feh=self.fehrange,
-            afe=self.aferange,
+            parrange=self.parrange,
             )
         valid_mistmods = readmist.readmist(
             mistpath=self.mistpath,
+            label_i=self.label_i,
+            label_o=self.label_o,
             norm=self.norm,
             returntorch=True,
             type='valid',
             trainpercentage=self.trainper,
-            eep=self.eeprange,
-            mass=self.massrange,
-            feh=self.fehrange,
-            afe=self.aferange,
+            parrange=self.parrange,
             )
         train_dataloader = DataLoader(train_mistmods, batch_size=self.batchsize,shuffle=True)
         valid_dataloader = DataLoader(valid_mistmods, batch_size=self.batchsize,shuffle=True)
@@ -409,50 +403,50 @@ class TrainMod(object):
             valid_labelsin  = validdata[:,self.datacond_in]
             valid_labelsout = validdata[:,self.datacond_out]
 
-            ax1[0,0].hist(train_mistmods.unnormf(train_labelsin[:,0],'EEP'),           bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
-            ax1[0,1].hist(train_mistmods.unnormf(train_labelsin[:,1],'initial_mass'),  bins=25, alpha=0.5, histtype='stepfilled')
-            ax1[1,0].hist(train_mistmods.unnormf(train_labelsin[:,2],'initial_[Fe/H]'),bins=25, alpha=0.5, histtype='stepfilled')
-            ax1[1,1].hist(train_mistmods.unnormf(train_labelsin[:,3],'initial_[a/Fe]'),bins=25, alpha=0.5, histtype='stepfilled')
+            # ax1[0,0].hist(train_mistmods.unnormf(train_labelsin[:,0],'EEP'),           bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
+            # ax1[0,1].hist(train_mistmods.unnormf(train_labelsin[:,1],'initial_mass'),  bins=25, alpha=0.5, histtype='stepfilled')
+            # ax1[1,0].hist(train_mistmods.unnormf(train_labelsin[:,2],'initial_[Fe/H]'),bins=25, alpha=0.5, histtype='stepfilled')
+            # ax1[1,1].hist(train_mistmods.unnormf(train_labelsin[:,3],'initial_[a/Fe]'),bins=25, alpha=0.5, histtype='stepfilled')
 
-            ax1[0,0].legend()
-            ax1[0,0].set_xlabel('EEP')
-            ax1[0,1].set_xlabel('Mass_i')
-            ax1[1,0].set_xlabel('[Fe/H]_i')
-            ax1[1,1].set_xlabel('[a/Fe]_i')
+            # ax1[0,0].legend()
+            # ax1[0,0].set_xlabel('EEP')
+            # ax1[0,1].set_xlabel('Mass_i')
+            # ax1[1,0].set_xlabel('[Fe/H]_i')
+            # ax1[1,1].set_xlabel('[a/Fe]_i')
 
-            fig1.savefig('{0}_trainingset_T.png'.format(self.outfilename.replace('.h5','')),dpi=150)
+            # fig1.savefig('plts/{0}_trainingset_T.png'.format(self.outfilename.replace('.h5','')),dpi=150)
 
-            if self.norm:
-                ax2[0,0].hist(train_mistmods.unnormf(train_labelsout[:,0],'star_mass'),bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
-                ax2[0,1].hist(train_mistmods.unnormf(train_labelsout[:,1],'log_L'),    bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[1,0].hist(train_mistmods.unnormf(train_labelsout[:,2],'log_Teff'), bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[1,1].hist(train_mistmods.unnormf(train_labelsout[:,3],'log_R'),    bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[2,0].hist(train_mistmods.unnormf(train_labelsout[:,4],'log_g'),    bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[2,1].hist(train_mistmods.unnormf(train_labelsout[:,5],'log_age'),  bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[3,0].hist(train_mistmods.unnormf(train_labelsout[:,6],'[Fe/H]'),   bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[3,1].hist(train_mistmods.unnormf(train_labelsout[:,7],'[a/Fe]'),   bins=25, alpha=0.5, histtype='stepfilled')
-            else:
-                ax2[0,0].hist(train_labelsout[:,0], bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
-                ax2[0,1].hist(train_labelsout[:,1], bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[1,0].hist(train_labelsout[:,2], bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[1,1].hist(train_labelsout[:,3], bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[2,0].hist(train_labelsout[:,4], bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[2,1].hist(train_labelsout[:,5], bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[3,0].hist(train_labelsout[:,6], bins=25, alpha=0.5, histtype='stepfilled')
-                ax2[3,1].hist(train_labelsout[:,7], bins=25, alpha=0.5, histtype='stepfilled')
+            # if self.norm:
+            #     ax2[0,0].hist(train_mistmods.unnormf(train_labelsout[:,0],'star_mass'),bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
+            #     ax2[0,1].hist(train_mistmods.unnormf(train_labelsout[:,1],'log_L'),    bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[1,0].hist(train_mistmods.unnormf(train_labelsout[:,2],'log_Teff'), bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[1,1].hist(train_mistmods.unnormf(train_labelsout[:,3],'log_R'),    bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[2,0].hist(train_mistmods.unnormf(train_labelsout[:,4],'log_g'),    bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[2,1].hist(train_mistmods.unnormf(train_labelsout[:,5],'log_age'),  bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[3,0].hist(train_mistmods.unnormf(train_labelsout[:,6],'[Fe/H]'),   bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[3,1].hist(train_mistmods.unnormf(train_labelsout[:,7],'[a/Fe]'),   bins=25, alpha=0.5, histtype='stepfilled')
+            # else:
+            #     ax2[0,0].hist(train_labelsout[:,0], bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
+            #     ax2[0,1].hist(train_labelsout[:,1], bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[1,0].hist(train_labelsout[:,2], bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[1,1].hist(train_labelsout[:,3], bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[2,0].hist(train_labelsout[:,4], bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[2,1].hist(train_labelsout[:,5], bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[3,0].hist(train_labelsout[:,6], bins=25, alpha=0.5, histtype='stepfilled')
+            #     ax2[3,1].hist(train_labelsout[:,7], bins=25, alpha=0.5, histtype='stepfilled')
                 
 
-            ax2[0,0].legend()
-            ax2[0,0].set_xlabel('Mass')
-            ax2[0,1].set_xlabel('log(L)')
-            ax2[1,0].set_xlabel('log(Teff)')
-            ax2[1,1].set_xlabel('log(R)')
-            ax2[2,0].set_xlabel('log(g)')
-            ax2[2,1].set_xlabel('log(Age)')
-            ax2[3,0].set_xlabel('[Fe/H]')
-            ax2[3,1].set_xlabel('[a/Fe]')
+            # ax2[0,0].legend()
+            # ax2[0,0].set_xlabel('Mass')
+            # ax2[0,1].set_xlabel('log(L)')
+            # ax2[1,0].set_xlabel('log(Teff)')
+            # ax2[1,1].set_xlabel('log(R)')
+            # ax2[2,0].set_xlabel('log(g)')
+            # ax2[2,1].set_xlabel('log(Age)')
+            # ax2[3,0].set_xlabel('[Fe/H]')
+            # ax2[3,1].set_xlabel('[a/Fe]')
 
-            fig2.savefig('{0}_trainingset_P.png'.format(self.outfilename.replace('.h5','')),dpi=150)
+            # fig2.savefig('plts/{0}_trainingset_P.png'.format(self.outfilename.replace('.h5','')),dpi=150)
 
             # create tensor for input training labels
             X_train_labels = train_labelsin
@@ -488,7 +482,6 @@ class TrainMod(object):
             except:
                 pass
 
-            cc = 0
             for iter_i in range(1,int(self.numiters)+1):
                 
                 model.train()
@@ -532,23 +525,23 @@ class TrainMod(object):
                 LR = scheduler.get_last_lr()[0]
 
                 # evaluate the validation set
-                if (iter_i % 2000 == 0) | (iter_i == 1):
+                if (iter_i % 2500 == 0) | (iter_i == 1) | (iter_i == int(self.numiters)):
 
                     print('--> Testing the model @ {}:'.format(iter_i))
                     print('      Input Labels [min / max]:')
-                    print(self.label_i)
-                    print(X_train_Tensor.min(axis=0)[0].tolist(),' / ',X_train_Tensor.max(axis=0)[0].tolist())
-                    print('      Output Labels [min / max]:')
-                    print(self.label_o)
-                    print(Y_train_Tensor.min(axis=0)[0].tolist(),' / ',Y_train_Tensor.max(axis=0)[0].tolist())
-                    print('     Percent Difference in Training Data: (Pred - Truth):')
+                    minval = X_train_Tensor.min(axis=0)[0].tolist()
+                    maxval = X_train_Tensor.max(axis=0)[0].tolist()
+                    for ii,kk in enumerate(self.label_i):
+                        print(f'{kk} -> {minval[ii]:.5f} / {maxval[ii]:.5f}')
+                    print('      Output Labels [min / max]  (Pred - Truth: min, max, med):')
+                    minval = Y_train_Tensor.min(axis=0)[0].tolist()
+                    maxval = Y_train_Tensor.max(axis=0)[0].tolist()
                     f = (Y_pred_train_Tensor - Y_train_Tensor)
-                    print('      Min:')
-                    print(['{0:.4f}'.format(x) for x in f.abs().min(axis=0)[0].tolist()])
-                    print('      Max:')
-                    print(['{0:.4f}'.format(x) for x in f.abs().max(axis=0)[0].tolist()])
-                    print('      Median:')
-                    print(['{0:.4f}'.format(x) for x in f.abs().median(axis=0)[0].tolist()])
+                    fmin = f.abs().min(axis=0)[0].tolist()
+                    fmax = f.abs().max(axis=0)[0].tolist()
+                    fmed = f.abs().median(axis=0)[0].tolist()
+                    for ii,kk in enumerate(self.label_o):
+                        print(f'{kk} -> {minval[ii]:.5f} / {maxval[ii]:.5f} ({fmin[ii]:.4f}, {fmax[ii]:.4f}, {fmed[ii]:.4f})')
                     
                     if self.logplot:
                         model.eval()
@@ -626,7 +619,7 @@ class TrainMod(object):
                         except ValueError:
                             pass
 
-                        fig3.savefig('{0}_loss.png'.format(self.outfilename.replace('.h5','')),dpi=150)
+                        fig3.savefig('plts/{0}_loss.png'.format(self.outfilename.replace('.h5','')),dpi=150)
 
                     try:
 
