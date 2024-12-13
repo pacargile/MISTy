@@ -82,11 +82,10 @@ class LinNet(nn.Module):
 
 # linear feed-foward model with sigmoid activation functions
 class MLP(nn.Module):  
-    def __init__(self, D_in, H1, H2, H3, D_out, xmin, xmax):
+    def __init__(self, D_in, H1, H2, H3, D_out):
         super(MLP, self).__init__()
 
-        self.xmin = xmin
-        self.xmax = xmax
+        # self.normfactor = normfactor
 
         self.mlp = nn.Sequential(OrderedDict([
             ('lin1',nn.Linear(D_in, H1)),
@@ -109,15 +108,15 @@ class MLP(nn.Module):
 
 
     def forward(self, x):
-        x_i = self.encode(x)
-        y_i = self.mlp(x_i)
+#         x_i = self.encode(x)
+        y_i = self.mlp(x)
         return y_i     
 
-    def encode(self,x):
-        # convert x into numpy to do math
-        x_np = x.data.cpu().numpy()
-        xout = (x_np-self.xmin)/(self.xmax-self.xmin) - 0.5
-        return Variable(torch.from_numpy(xout).type(dtype))
+    # def encode(self,x):
+    #     # convert x into numpy to do math
+    #     x_np = x.data.cpu().numpy()
+    #     xout = (x_np-self.xmin)/(self.xmax-self.xmin) - 0.5
+    #     return Variable(torch.from_numpy(xout).type(dtype))
 
 # Convolutional neural network (two convolutional layers)
 class CNN(nn.Module):

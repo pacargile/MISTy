@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+from numpy.lib import recfunctions as rfn
 import torch
 from torch.utils.data import Dataset
 
@@ -8,6 +9,8 @@ class readmist(Dataset):
     def __init__(self, **kwargs):
         super(readmist, self).__init__()
 
+        self.verbose = kwargs.get('verbose',False)
+
         # read in HDF5 file
         # determine path to atm files
         self.mistpath = kwargs.get('mistpath',None)
@@ -15,8 +18,13 @@ class readmist(Dataset):
         if self.mistpath is None:
             self.mistpath = "./mist_default.h5"
 
+        if self.verbose:
+            print(f'... MIST path: {self.mistpath}')
+
         # set training boolean, if false then assume test set
         self.datatype = kwargs.get('type','train')
+        if self.verbose:
+            print(f'... Data Set Type: {self.datatype}')
 
         # define a RNG with a set seed, make sure train and test are 
         # shuffled the same way
@@ -27,68 +35,123 @@ class readmist(Dataset):
 
         # set if to do the normalization or not
         self.norm = kwargs.get('norm',True)
+        if self.verbose:
+            print(f'... Normalize: {self.norm}')
         
         # set if user wants to return a pytorch tensor or a numpy array
         self.returntorch = kwargs.get('returntorch',True)
+        if self.verbose:
+            print(f'... Return Torch Tensor: {self.returntorch}')
 
         # set train/test percentage (percentage of MIST that is used for training)
         self.trainper = kwargs.get('trainpercentage',0.9)
+        if self.verbose:
+            print(f'... Training/Test Percentage: {self.trainper}')
 
         # check for user defined ranges for atm models
-        self.eeprange  = kwargs.get('eep',[0.0,1000000.0])
-        self.massrange = kwargs.get('mass',[-1.0,10000.0])
-        self.fehrange  = kwargs.get('feh',[-10.0,10.0])
-        self.aferange  = kwargs.get('afe',[-10.0,10.0])
+        # defaultparrange = ({
+        #     'EEP':[0.0,1000000.0],
+        #     'initial_mass':[-1.0,10000.0],
+        #     'initial_[Fe/H]':[-10.0,10.0],
+        #     'initial_[a/Fe]':[-10.0,10.0],
+        #     })
+        defaultparrange = None
+        self.parrange = kwargs.get('parrange',defaultparrange)
+
+        default_label_i = ([
+            'EEP',
+            'initial_mass',
+            'initial_[Fe/H]',
+            'initial_[a/Fe]',
+            ])
+        
+        self.label_i = kwargs.get('label_i',default_label_i)
+
+        if self.verbose:
+            print('... Input Labels:')
+            print(f'{self.label_i}')
 
         # read in HDF5 file
         mistfile = h5py.File(self.mistpath,'r')
 
         # read in index array
         self.index = [x.decode('utf-8') for x in list(mistfile['index'])]
+        self.index_labels = mistfile.attrs['indexlabel'].split('|')
+        self.index_fmt = mistfile.attrs['indexfmt'].split('|')
 
         # create mist dictionary and determine all possible masses
         self.mist = {}
-        self.eeparr  = []
-        self.massarr = []
-        self.FeHarr  = []
-        self.aFearr  = []
-        self.Vrotarr = []
 
-        for ii in self.index:
-            ii_s = ii.split('/')            
-            self.Vrotarr.append(float(ii_s[2]))
+        for indexstr in self.index:
+            # parse index string
+            indexstr_s = indexstr.split('/')
 
-            self.mist[ii] = np.array(mistfile[ii])
+            # pull mist models for this index string
+            self.mist[indexstr] = np.array(mistfile[indexstr])
+            nrows = len(self.mist[indexstr])
+            
+            # add index string parameters to dict
+            inpars = {x:float(y)*np.ones(nrows,dtype=float) for (x,y) in zip(self.index_labels,indexstr_s)}
+            # add other input labels to dict
+            for il in self.label_i:
+                if il not in list(inpars.keys()):
+                    inpars[il] = self.mist[indexstr][il]            
 
-            eep_i  = self.mist[ii]['EEP']
-            mass_i = self.mist[ii]['initial_mass']
-            feh_i  = self.mist[ii]['initial_[Fe/H]']
-            afe_i  = self.mist[ii]['initial_[a/Fe]']
+            # add these columns to output mist table
+            addcols = [x for x in inpars.keys() if x not in self.mist[indexstr].dtype.names]            
+            for kk in addcols:
+                self.mist[indexstr] = rfn.append_fields(self.mist[indexstr],kk,np.array(inpars[kk],dtype=float),usemask=False)
 
+            # create conditional to parse down input labels to user
+            # defined range
+
+            cond = np.ones(nrows,dtype=bool)
+            if self.parrange is not None:
+                for kk in self.parrange.keys():
+                    cond *= (inpars[kk] >= self.parrange[kk][0]) & (inpars[kk] <= self.parrange[kk][1])
+                
+            # check to make sure the parrange didn't remove all rows, if so, skip to the next index
+            if cond.sum() == 0:
+                continue
+            
             parlist_i = []
-            cond = (
-                (eep_i >= self.eeprange[0]) & (eep_i <= self.eeprange[1]) &
-                (mass_i >= self.massrange[0]) & (mass_i <= self.massrange[1]) &
-                (feh_i >= self.fehrange[0]) & (feh_i <= self.fehrange[1]) &
-                (afe_i >= self.aferange[0]) & (afe_i <= self.aferange[1])
-            )
-
-            parlist_i.append(eep_i[cond])
-            parlist_i.append(mass_i[cond])
-            parlist_i.append(feh_i[cond])
-            parlist_i.append(afe_i[cond])
+            parlist_lab = []
+            for kk in inpars.keys():
+                parlist_lab.append(kk)
+                parlist_i.append(inpars[kk][cond])
 
             pararr = np.array(parlist_i).T
 
-            if ii == self.index[0]:
+            if indexstr == self.index[0]:
                 self.allpars = pararr
+                self.allpars_labels = parlist_lab
             else:
                 self.allpars = np.vstack([self.allpars,pararr])
 
-            self.eeparr  += list(np.unique(self.mist[ii]['EEP']))
-            self.massarr += list(np.unique(self.mist[ii]['initial_mass']))
-            self.FeHarr += list(np.unique(self.mist[ii]['initial_[Fe/H]']))
-            self.aFearr += list(np.unique(self.mist[ii]['initial_[a/Fe]']))
+            # determine column names
+            if indexstr == self.index[0]:
+                self.columns = np.array(self.mist[indexstr].dtype.names)
+                self.normfactor = {}
+
+            # update median and min/max values for normalization
+            for kk in self.columns:
+                med = np.median(self.mist[indexstr][kk][cond])
+                minmax = [min(self.mist[indexstr][kk][cond]),max(self.mist[indexstr][kk][cond])]
+                
+                # catch cases where min == max 
+                # these shouldn't be used in training since there is no variance
+                # but just to keep from throwing errors, make max-min = 1.0
+                if minmax[0] == minmax[1]:
+                    minmax = [med,med]
+                
+                if indexstr == self.index[0]:
+                    self.normfactor[kk] = [med,minmax[0],minmax[1]]
+                else:
+                    self.normfactor[kk] = ([
+                        np.median([self.normfactor[kk][0],med]),
+                        min([self.normfactor[kk][1],minmax[0]]),
+                        max([self.normfactor[kk][2],minmax[1]]),
+                        ])
 
         # shuffle allpars
         rng.shuffle(self.allpars)
@@ -103,61 +166,11 @@ class readmist(Dataset):
         # determine how many rows of data are included
         self.datalen = self.allpars.shape[0]
 
-        # figure out general unique arrays
-        self.eeparr = np.unique(self.eeparr)
-        self.massarr = np.unique(self.massarr)
-        self.FeHarr  = np.unique(self.FeHarr)
-        self.aFearr  = np.unique(self.aFearr)
-        self.Vrotarr = np.unique(self.Vrotarr)
-        self.eeparr.sort()
-        self.massarr.sort()
-        self.FeHarr.sort()
-        self.aFearr.sort()
-        self.Vrotarr.sort()
-
-        # figure out columns used in models
-        # self.columns = list(np.array(HDF5file[self.index[0]]).dtype.names)
-        # default set of columns
-        self.columns = ([
-            'EEP',
-            'initial_mass',
-            'initial_[Fe/H]',
-            'initial_[a/Fe]',
-            'star_mass',
-            'log_L',
-            'log_Teff',
-            'log_R',
-            'log_g',
-            'log_age',
-            '[Fe/H]',
-            '[a/Fe]',
-            'Agewgt',
-            ])
-
-        # need min-max values for each column used in models
-        # self.minmax = {x:[np.inf,-np.inf] for x in self.colnames}
-        # default set of min-max values
-        self.minmax = ({
-            'EEP':[1,808],
-            'initial_mass':[0.25,1.5],
-            'initial_[Fe/H]':[-4,0.5],
-            'initial_[a/Fe]':[-0.2,0.6],
-            'star_mass':[0.25,1.5],
-            'log_L':[-3.0,5.0],
-            'log_Teff':[np.log10(2500.0),np.log10(50000.0)],
-            'log_R':[-2.0,4.0],
-            'log_g':[-1,5.5],
-            'log_age':[6.0,np.log10(20E+9)],
-            '[Fe/H]':[-4.0,0.5],
-            '[a/Fe]':[-0.2,0.6],
-            'Agewgt':[0,0.05],
-            })
-
-    def normf(self,inarr,label):
-        return ((inarr-self.minmax[label][0])/(self.minmax[label][1]-self.minmax[label][0])) - 0.5
+    def normf(self,inarr,label):        
+        return 1.0 + (inarr-self.normfactor[label][0])/(self.normfactor[label][2]-self.normfactor[label][1]) 
 
     def unnormf(self,inarr,label):
-        return ((inarr + 0.5) * (self.minmax[label][1]-self.minmax[label][0])) + self.minmax[label][0]
+        return ((inarr-1.0)*(self.normfactor[label][2]-self.normfactor[label][1])) + self.normfactor[label][0]
 
     def __len__(self):
         """
@@ -178,25 +191,27 @@ class readmist(Dataset):
 
         # select which set of parameters
         parind = self.allpars[idx]
-        
-        eep_i  = parind[0]
-        mass_i = parind[1]
-        feh_i = parind[2]
-        afe_i = parind[3]
-        vrot_i = self.Vrotarr[0]
+        pardict = {kk:parind[ii] for ii,kk in enumerate(self.allpars_labels)}
         
         # construct the key that pulls the correct MIST pars
-        parkey = f'{feh_i:.2f}/{afe_i:.2f}/{vrot_i:.2f}'
+        parkey = '/'.join([('{0:'+f'{ll}'+'}').format(pardict[kk]) for kk,ll in zip(self.index_labels,self.index_fmt)])
         mist_i = self.mist[parkey]
         
-        cond = (mist_i['EEP'] == eep_i) & (mist_i['initial_mass'] == mass_i)
-        mist_ii = mist_i[cond]        
-
+        # build cond for label_in that are not in index_labels
+        cond = np.ones(len(mist_i),dtype=bool)
+        for kk in self.label_i:
+            if kk not in self.index_labels:
+                cond *= mist_i[kk] == pardict[kk]
+        
+        # apply cond to mist_i
+        mist_ii = mist_i[cond]
+        
+        # build a pararr for all columns in mist_i[cond]
         if self.norm:
             pararr = np.array([self.normf(mist_ii[x][0],x) for x in self.columns],dtype=np.float32)
         else:
             pararr = np.array([mist_ii[x][0] for x in self.columns],dtype=np.float32)
-        
+                
 
         if self.returntorch:
             pararr = torch.from_numpy(pararr)
