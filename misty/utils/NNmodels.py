@@ -120,50 +120,25 @@ class MLP(nn.Module):
 
 # Convolutional neural network (two convolutional layers)
 class CNN(nn.Module):
-    def __init__(self, D_in, H1, H2, D_out, xmin, xmax):
+    def __init__(self, D_in, H1, H2, H3, D_out):
         super(CNN, self).__init__()
 
-        self.xmin = xmin
-        self.xmax = xmax
-
-        self.D_in = D_in
-        self.H1    = H1
-        self.H2    = H2
-        self.D_out = D_out
-
-        self.layers = nn.ModuleList([])
+        self.cnn = nn.Sequential(OrderedDict([
+            ('conv1', nn.Conv1d(in_channels=1, out_channels=16, kernel_size=3, padding=1) ),
+            ('af1', nn.GELU()),
+            ('conv2', nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1) ),
+            ('af2', nn.GELU()), 
+        ]))
         
-        act = nn.ELU()
+        self.mlp = nn.Sequential(OrderedDict([
+            ('lin1', nn.Linear(32 * 5, 16) ),
+            ('af3', nn.GELU()),
+            ('lin2', nn.Linear(16, 8)),
+        ]))
 
-        self.encoder = nn.Sequential(
-            nn.Conv1d(in_channels=self.D_in, out_channels=self.H1, kernel_size=1, stride=1, padding=1), # 1D 128 kernels of length=36
-            act,
-            nn.Conv1d(in_channels=self.H1, out_channels=self.H2, kernel_size=3, stride=2, padding=1), # 1D 4*64 kernels of length=18
-            act,
-            nn.Conv1d(in_channels=self.H2, out_channels=self.H1, kernel_size=14, stride=1), # 1D 128 kernels of length=1
-            act,
-            nn.Conv1d(in_channels=self.H1, out_channels=self.D_out, kernel_size=1, stride=1) # NiN 71 channels of length=1
-        )
-
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose1d(in_channels=self.D_out, out_channels=self.H1, kernel_size=1, stride=1),
-            act,
-            nn.ConvTranspose1d(in_channels=self.H1, out_channels=self.H2, kernel_size=14, stride=1),
-            act,
-            nn.ConvTranspose1d(in_channels=self.H2, out_channels=self.H1, kernel_size=3, stride=2, padding=1, output_padding=1),
-            act,
-            nn.ConvTranspose1d(in_channels=self.H1, out_channels=self.D_out, kernel_size=1, stride=1, padding=1, output_padding=0)
-        )
-    
     def forward(self, x):
-        x_i = self.normalize(x)
-
-        encoded = self.encoder(x.T)
-        decoded = self.decoder(encoded)
-        return decoded.T
+        y_i = self.cnn(x)
+        y_i = y_i.view(y_i.size(0), -1)
+        y = self.mlp(y_i)
+        return y        
         
-    def normalize(self,x):
-        # convert x into numpy to do math
-        x_np = x.data.cpu().numpy()
-        xout = (x_np-self.xmin)/(self.xmax-self.xmin) - 0.5
-        return Variable(torch.from_numpy(xout).type(dtype))

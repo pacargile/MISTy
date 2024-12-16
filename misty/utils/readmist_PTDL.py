@@ -108,8 +108,11 @@ class readmist(Dataset):
             cond = np.ones(nrows,dtype=bool)
             if self.parrange is not None:
                 for kk in self.parrange.keys():
-                    cond *= (inpars[kk] >= self.parrange[kk][0]) & (inpars[kk] <= self.parrange[kk][1])
-                
+                    if kk in inpars.keys():
+                        cond *= (inpars[kk] >= self.parrange[kk][0]) & (inpars[kk] <= self.parrange[kk][1])
+                    if kk in self.mist[indexstr].dtype.names:
+                        cond *= (self.mist[indexstr][kk] >= self.parrange[kk][0]) & (self.mist[indexstr][kk] <= self.parrange[kk][1])
+                                        
             # check to make sure the parrange didn't remove all rows, if so, skip to the next index
             if cond.sum() == 0:
                 continue
