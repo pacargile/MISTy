@@ -2,12 +2,13 @@ import h5py
 import numpy as np
 from numpy.lib import recfunctions as rfn
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
+from scipy.stats import genhyperbolic
 
-class readmist(Dataset):
+class ReadMIST(Dataset):
     """docstring for readmist"""
     def __init__(self, **kwargs):
-        super(readmist, self).__init__()
+        super(ReadMIST, self).__init__()
 
         self.verbose = kwargs.get('verbose',False)
 
@@ -20,6 +21,10 @@ class readmist(Dataset):
 
         if self.verbose:
             print(f'... MIST path: {self.mistpath}')
+
+        # does the user want to use an eep prior in sampling the training data
+        # if so, store full eep array
+        self.eepprior = kwargs.get('eepprior',False)
 
         # set training boolean, if false then assume test set
         self.datatype = kwargs.get('type','train')
@@ -49,12 +54,6 @@ class readmist(Dataset):
             print(f'... Training/Test Percentage: {self.trainper}')
 
         # check for user defined ranges for atm models
-        # defaultparrange = ({
-        #     'EEP':[0.0,1000000.0],
-        #     'initial_mass':[-1.0,10000.0],
-        #     'initial_[Fe/H]':[-10.0,10.0],
-        #     'initial_[a/Fe]':[-10.0,10.0],
-        #     })
         defaultparrange = None
         self.parrange = kwargs.get('parrange',defaultparrange)
 
@@ -131,6 +130,14 @@ class readmist(Dataset):
             else:
                 self.allpars = np.vstack([self.allpars,pararr])
 
+            if self.eepprior:
+                if indexstr == self.index[0]:
+                    self.eep = self.mist[indexstr]['EEP'][cond]
+                    self.logg = self.mist[indexstr]['log_g'][cond]
+                else:
+                    self.eep = np.concatenate((self.eep,self.mist[indexstr]['EEP'][cond]))
+                    self.logg = np.concatenate((self.logg,self.mist[indexstr]['log_g'][cond]))
+
             # determine column names
             if indexstr == self.index[0]:
                 self.columns = np.array(self.mist[indexstr].dtype.names)
@@ -156,15 +163,34 @@ class readmist(Dataset):
                         max([self.normfactor[kk][2],minmax[1]]),
                         ])
 
+        # check to make sure normfactor pars are all working
+        for kk in self.normfactor.keys():
+            if self.normfactor[kk][1] == self.normfactor[kk][2]:
+                self.normfactor[kk][1] = self.normfactor[kk][0] - 1.0
+                self.normfactor[kk][2] = self.normfactor[kk][0] + 1.0
+                
         # shuffle allpars
-        rng.shuffle(self.allpars)
+        if self.eepprior:
+            sind = list(range(0,self.allpars.shape[0]))
+            rng.shuffle(sind)
+            self.allpars = self.allpars[sind]
+            self.eep = self.eep[sind]
+            self.logg = self.logg[sind]
+        else:
+            rng.shuffle(self.allpars)
 
         if (self.datatype == 'train') | (self.datatype == 'valid'):
             stopind = int(np.rint(self.trainper * self.allpars.shape[0]))
             self.allpars = self.allpars[:stopind]
+            if self.eepprior:
+                self.eep = self.eep[:stopind]
+                self.logg = self.logg[:stopind]
         else:
             startind = int(np.rint((1.0-self.trainper) * self.allpars.shape[0]))
             self.allpars = self.allpars[-startind:]
+            if self.eepprior:
+                self.eep = self.eep[-startind:]
+                self.logg = self.logg[-startind:]
 
         # determine how many rows of data are included
         self.datalen = self.allpars.shape[0]
@@ -191,7 +217,6 @@ class readmist(Dataset):
         Args:
             idx (integer): index integer for row to draw
         """
-
         # select which set of parameters
         parind = self.allpars[idx]
         pardict = {kk:parind[ii] for ii,kk in enumerate(self.allpars_labels)}
@@ -221,3 +246,38 @@ class readmist(Dataset):
             
         return pararr
 
+class EEPBatchSampler(Sampler):
+    def __init__(self, dataset, batch_size):
+        self.dataset = dataset
+        self.datalen = len(self.dataset)
+        
+        self.batch_size = batch_size
+        self.batchlen = int(np.ceil(self.datalen // self.batch_size))
+        
+        self.dataindex = list(range(0,self.datalen))
+        
+        p_eep = genhyperbolic.pdf(self.dataset.eep,1.0,1.0,-0.5,loc=550,scale=100)
+        p_eep /= p_eep.sum()
+
+        # also boost log(g)
+        p_logg = genhyperbolic.pdf(self.dataset.logg,1.0,1.0,-0.75,loc=2.0,scale=1.0)
+        p_logg /= p_logg.sum()
+        
+        self.p = p_eep * p_logg
+        self.p /= self.p.sum()
+
+        self.rng = np.random.default_rng(0)
+
+    def __iter__(self):
+        # batches = []
+
+        for _ in range(self.batchlen):
+            batch_indices = self.rng.choice(self.dataindex, 
+                                size=self.batch_size,
+                                replace=True, p = self.p)
+            yield batch_indices.tolist()
+
+        # return iter(batches)
+
+    def __len__(self):
+        return self.batchlen
