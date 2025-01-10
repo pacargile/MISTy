@@ -19,6 +19,8 @@ from ..utils import NNmodels
 def defmod(D_in,H1,H2,H3,D_out,nntype='MLP'):
     if nntype == 'LinNet':
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out)
+    elif nntype == 'CNN':
+        return NNmodels.CNN(D_in,H1,H2,H3,D_out)
     else:
         return NNmodels.MLP(D_in,H1,H2,H3,D_out)
 
@@ -32,7 +34,9 @@ def readNN(nnpath,nntype='MLP'):
         H1    = nnh5['model/mlp.lin1.weight'].shape[0]
         H2    = nnh5['model/mlp.lin4.weight'].shape[0]
         H3    = nnh5['model/mlp.lin5.weight'].shape[0]
-        D_out = nnh5['model/mlp.lin6.weight'].shape[0]
+        D_out = nnh5['model/mlp.lin9.weight'].shape[0]
+    elif nntype == 'CNN':
+        pass
     
     model = defmod(D_in,H1,H2,H3,D_out,nntype=nntype)
 
