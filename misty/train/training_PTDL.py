@@ -49,6 +49,8 @@ def slicebatch(inlist,N):
 def defmod(D_in,H1,H2,H3,D_out,NNtype='MLP'):
     if NNtype == 'LinNet':
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out)
+    elif NNtype == 'CNN':
+        return NNmodels.CNN(D_in,H1,H2,H3,D_out)
     else:
         return NNmodels.MLP(D_in,H1,H2,H3,D_out)
 
@@ -132,6 +134,8 @@ class TrainMod(object):
 
         # use eepprior in training
         self.eepprior = kwargs.get('eepprior',False)
+        if self.eepprior:
+            print('... Running with EEP prior on training sampler')
 
         print('... Running Training on Device: {}'.format(device))
 
@@ -139,7 +143,7 @@ class TrainMod(object):
         print('... Pulling a first set of models for test set')
         print('... Reading {0:.2f} of grid for test models from {1}'.format(1.0-self.trainper,self.mistpath))
         sys.stdout.flush()
-        test_mistmods = readmist.readmist(
+        test_mistmods = readmist.ReadMIST(
             mistpath=self.mistpath,
             label_i=self.label_i,
             label_o=self.label_o,
@@ -148,6 +152,7 @@ class TrainMod(object):
             type='test',
             trainpercentage=self.trainper,
             parrange=self.parrange,
+            eepprior=False,
             )
         print(f'... Total number of test models: {len(test_mistmods)}')        
         test_dataloader = DataLoader(test_mistmods, batch_size=len(test_mistmods),shuffle=True)
@@ -294,7 +299,7 @@ class TrainMod(object):
         # set up model to start training
         model.to(device)
 
-        train_mistmods = readmist.readmist(
+        train_mistmods = readmist.ReadMIST(
             mistpath=self.mistpath,
             label_i=self.label_i,
             label_o=self.label_o,
@@ -303,8 +308,9 @@ class TrainMod(object):
             type='train',
             trainpercentage=self.trainper,
             parrange=self.parrange,
+            eepprior=self.eepprior,
             )
-        valid_mistmods = readmist.readmist(
+        valid_mistmods = readmist.ReadMIST(
             mistpath=self.mistpath,
             label_i=self.label_i,
             label_o=self.label_o,
@@ -313,9 +319,17 @@ class TrainMod(object):
             type='valid',
             trainpercentage=self.trainper,
             parrange=self.parrange,
+            eepprior=self.eepprior,
             )
-        train_dataloader = DataLoader(train_mistmods, batch_size=self.batchsize,shuffle=True)
-        valid_dataloader = DataLoader(valid_mistmods, batch_size=self.batchsize,shuffle=True)
+
+        if self.eepprior:
+            batchsampler_train = readmist.EEPBatchSampler(train_mistmods, self.batchsize)
+            batchsampler_valid = readmist.EEPBatchSampler(valid_mistmods, self.batchsize)
+            train_dataloader = DataLoader(train_mistmods, batch_sampler=batchsampler_train)
+            valid_dataloader = DataLoader(valid_mistmods, batch_sampler=batchsampler_valid)
+        else:
+            train_dataloader = DataLoader(train_mistmods, batch_size=self.batchsize, shuffle=True)
+            valid_dataloader = DataLoader(valid_mistmods, batch_size=self.batchsize, shuffle=True)
 
         nbatches = len(train_dataloader)
         numtrain = nbatches * self.batchsize
@@ -324,7 +338,7 @@ class TrainMod(object):
         print(f'... Number of training steps: {self.numiters}')
         print(f'... Number of models in each batch: {self.batchsize}')
         print(f'... Number of batches: {nbatches}')
-        print(f'... Totoal Number of training/validation data: {numtrain}')
+        print(f'... Total Number of training/validation data: {numtrain}')
 
         try:
             if shutil.which('free') is not None:
@@ -340,7 +354,8 @@ class TrainMod(object):
 
         # initialize the loss function
         # loss_fn = torch.nn.MSELoss()
-        loss_fn = torch.nn.MSELoss(reduction='mean')
+        # loss_fn = torch.nn.MSELoss(reduction='mean')
+        loss_fn = torch.nn.HuberLoss(reduction='mean')
         # loss_fn = torch.nn.SmoothL1Loss()
         # loss_fn = torch.nn.L1Loss()
 
@@ -357,8 +372,8 @@ class TrainMod(object):
         # scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.1)
         scheduler = ExponentialLR(optimizer,gamma=1-(5E-8))
 
-        fig1,ax1 = plt.subplots(nrows=2,ncols=2,figsize=(8,8),constrained_layout=True)
-        fig2,ax2 = plt.subplots(nrows=4,ncols=2,figsize=(10,10),constrained_layout=True)
+        fig1,ax1 = plt.subplots(nrows=len(self.label_i),ncols=1,figsize=(5,15),constrained_layout=True)
+        fig2,ax2 = plt.subplots(nrows=len(self.label_o),ncols=1,figsize=(5,15),constrained_layout=True)
         fig3,ax3 = plt.subplots(nrows=3,ncols=1,figsize=(8,8),constrained_layout=True)
 
         ax3[0].set_ylabel('log(L1 Loss per model)')
@@ -402,6 +417,16 @@ class TrainMod(object):
 
             valid_labelsin  = validdata[:,self.datacond_in]
             valid_labelsout = validdata[:,self.datacond_out]
+
+            for ii,kk in enumerate(self.label_i):
+                ax1[ii].hist(train_mistmods.unnormf(train_labelsin[:,ii],kk), bins=25, alpha=0.5, histtype='stepfilled')
+                ax1[ii].set_xlabel(kk)
+            fig1.savefig('plts/{0}_trainingset_T.png'.format(self.outfilename.replace('.h5','')),dpi=150)
+
+            for ii,kk in enumerate(self.label_o):
+                ax2[ii].hist(train_mistmods.unnormf(train_labelsout[:,ii],kk), bins=25, alpha=0.5, histtype='stepfilled')
+                ax2[ii].set_xlabel(kk)
+            fig2.savefig('plts/{0}_trainingset_P.png'.format(self.outfilename.replace('.h5','')),dpi=150)
 
             # ax1[0,0].hist(train_mistmods.unnormf(train_labelsin[:,0],'EEP'),           bins=25, alpha=0.5, histtype='stepfilled',label=epoch_i+1)
             # ax1[0,1].hist(train_mistmods.unnormf(train_labelsin[:,1],'initial_mass'),  bins=25, alpha=0.5, histtype='stepfilled')
@@ -525,7 +550,7 @@ class TrainMod(object):
                 LR = scheduler.get_last_lr()[0]
 
                 # evaluate the validation set
-                if (iter_i % 2500 == 0) | (iter_i == 1) | (iter_i == int(self.numiters)):
+                if (iter_i % 1000 == 0) | (iter_i == 1) | (iter_i == int(self.numiters)):
 
                     print('--> Testing the model @ {}:'.format(iter_i))
                     print('      Input Labels [min / max]:')
