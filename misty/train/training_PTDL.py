@@ -354,8 +354,8 @@ class TrainMod(object):
 
         # initialize the loss function
         # loss_fn = torch.nn.MSELoss()
-        # loss_fn = torch.nn.MSELoss(reduction='mean')
-        loss_fn = torch.nn.HuberLoss(reduction='mean')
+        loss_fn = torch.nn.MSELoss(reduction='mean')
+        # loss_fn = torch.nn.HuberLoss(reduction='mean')
         # loss_fn = torch.nn.SmoothL1Loss()
         # loss_fn = torch.nn.L1Loss()
 
