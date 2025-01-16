@@ -260,7 +260,7 @@ class EEPBatchSampler(Sampler):
         p_eep /= p_eep.sum()
 
         # also boost log(g)
-        p_logg = genhyperbolic.pdf(self.dataset.logg,1.0,1.0,-0.75,loc=2.0,scale=1.0)
+        p_logg = genhyperbolic.pdf(self.dataset.logg,1.0,1.0,-0.75,loc=1.0,scale=2.0)
         p_logg /= p_logg.sum()
         
         self.p = p_eep * p_logg
