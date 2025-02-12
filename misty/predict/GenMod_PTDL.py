@@ -93,20 +93,24 @@ class ANN(object):
         # read in x array and check if it is one set of pars or an array of pars
         if isinstance(x,list):
             x = np.asarray(x)
+
+        # make a copy so that the input x array isn't changed in place
+        x_i = np.copy(x)
+
         if len(x.shape) == 1:
             inputD = 1
             if self.normed:
                 for ii,n_i in enumerate(self.norm_i):
                     # x[ii] = ((x[ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0]
-                    x[ii] = 1.0 + (x[ii]-n_i[0])/(n_i[2]-n_i[1]) 
+                    x_i[ii] = 1.0 + (x_i[ii]-n_i[0])/(n_i[2]-n_i[1]) 
         else:
             inputD = x.shape[0]
             if self.normed:
                 for ii,n_i in enumerate(self.norm_i):
                     # x[:,ii] = ((x[:,ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0]
-                    x[:,ii] = 1.0 + (x[:,ii]-n_i[0])/(n_i[2]-n_i[1]) 
+                    x_i[:,ii] = 1.0 + (x_i[:,ii]-n_i[0])/(n_i[2]-n_i[1]) 
 
-        inputX = Variable(torch.from_numpy(x).type(dtype)).reshape(inputD,self.model.D_in)
+        inputX = Variable(torch.from_numpy(x_i).type(dtype)).reshape(inputD,self.model.D_in)
         outputY = self.model(inputX)
         y = outputY.data.numpy().squeeze()
 
@@ -163,10 +167,21 @@ class modpred(object):
         
         # stick in input labels
         for ii,kk in enumerate(self.anns.label_i):
-            out[kk] = pars[ii] #kwargs.get(kk)
+            if len(pars.shape) == 1:
+                out[kk] = pars[ii] #kwargs.get(kk)
+            else:
+                out[kk] = pars[:,ii]
         
-        out_i = {x:modpred[ii] for ii,x in enumerate(self.anns.label_o)}
-        out.update(out_i)
+        if len(pars.shape) == 1:
+            out_i = {y:modpred[ii] for ii,y in enumerate(self.anns.label_o)}
+            out.update(out_i)
+        else:
+            out_i = {y:modpred[:,ii] for ii,y in enumerate(self.anns.label_o)}
+            out.update(out_i)
+
+        
+        # out_i = {x:modpred[ii] for ii,x in enumerate(self.anns.label_o)}
+        # out.update(out_i)
         
         if 'log_age' in out.keys():
             out['log(Age)'] = out.pop('log_age')
