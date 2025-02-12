@@ -148,19 +148,22 @@ class modpred(object):
     def pred(self,inpars):
         return self.anns.eval(inpars)
     
-    def getMIST(self,x):#**kwargs):
+    def getMIST(self,pars):#**kwargs):
 
         # x = np.array([kwargs.get('age'),kwargs.get('mass'),kwargs.get('feh'),kwargs.get('afe')])        
 
         # x = np.array([kwargs.get(kk) for kk in self.anns.label_i])
         
-        modpred = self.pred(x)
+        # make copy of input array so that the code doesn't change inplace
+        pars = np.copy(pars)
+        
+        modpred = self.pred(pars)
     
         out = {}
         
         # stick in input labels
         for ii,kk in enumerate(self.anns.label_i):
-            out[kk] = x[ii] #kwargs.get(kk)
+            out[kk] = pars[ii] #kwargs.get(kk)
         
         out_i = {x:modpred[ii] for ii,x in enumerate(self.anns.label_o)}
         out.update(out_i)
