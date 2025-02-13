@@ -1,15 +1,3 @@
-# import torch
-# from torch import nn
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# if str(device) != 'cpu':
-#   dtype = torch.cuda.FloatTensor
-# else:
-#   dtype = torch.FloatTensor
-# from torch.autograd import Variable
-# import torch.nn.functional as F
-# from torch.nn.functional import conv1d as tconv1d
-# from torch.nn.functional import conv_transpose1d as tconv_transpose1d
-
 import jax
 jax.config.update("jax_enable_x64", True)
 
@@ -70,6 +58,9 @@ class Net(object):
             self.bias4 = np.array(nnh5['model/mlp.lin4.bias'][()])
             self.bias5 = np.array(nnh5['model/mlp.lin5.bias'][()])
             self.bias6 = np.array(nnh5['model/mlp.lin6.bias'][()])
+            self.bias7 = np.array(nnh5['model/mlp.lin7.bias'][()])
+            self.bias8 = np.array(nnh5['model/mlp.lin8.bias'][()])
+            self.bias9 = np.array(nnh5['model/mlp.lin9.bias'][()])
 
             self.weight1 = np.transpose(np.array(nnh5['model/mlp.lin1.weight'][()]),(1,0))
             self.weight2 = np.transpose(np.array(nnh5['model/mlp.lin2.weight'][()]),(1,0))
@@ -77,6 +68,9 @@ class Net(object):
             self.weight4 = np.transpose(np.array(nnh5['model/mlp.lin4.weight'][()]),(1,0))
             self.weight5 = np.transpose(np.array(nnh5['model/mlp.lin5.weight'][()]),(1,0))
             self.weight6 = np.transpose(np.array(nnh5['model/mlp.lin6.weight'][()]),(1,0))
+            self.weight7 = np.transpose(np.array(nnh5['model/mlp.lin7.weight'][()]),(1,0))
+            self.weight8 = np.transpose(np.array(nnh5['model/mlp.lin8.weight'][()]),(1,0))
+            self.weight9 = np.transpose(np.array(nnh5['model/mlp.lin9.weight'][()]),(1,0))
 
             self.lin1 = nnx.Linear(in_features=self.weight1.shape[0],out_features=self.weight1.shape[1],rngs=nnx.Rngs(0))
             self.lin1.kernel = nnx.Param(value=self.weight1)
@@ -101,24 +95,37 @@ class Net(object):
             self.lin6 = nnx.Linear(in_features=self.weight6.shape[0],out_features=self.weight6.shape[1],rngs=nnx.Rngs(0))
             self.lin6.kernel = nnx.Param(value=self.weight6)
             self.lin6.bias = nnx.Param(value=self.bias6)
+
+            self.lin7 = nnx.Linear(in_features=self.weight7.shape[0],out_features=self.weight7.shape[1],rngs=nnx.Rngs(0))
+            self.lin7.kernel = nnx.Param(value=self.weight7)
+            self.lin7.bias = nnx.Param(value=self.bias7)
+
+            self.lin8 = nnx.Linear(in_features=self.weight8.shape[0],out_features=self.weight8.shape[1],rngs=nnx.Rngs(0))
+            self.lin8.kernel = nnx.Param(value=self.weight8)
+            self.lin8.bias = nnx.Param(value=self.bias8)
+
+            self.lin9 = nnx.Linear(in_features=self.weight9.shape[0],out_features=self.weight9.shape[1],rngs=nnx.Rngs(0))
+            self.lin9.kernel = nnx.Param(value=self.weight9)
+            self.lin9.bias = nnx.Param(value=self.bias9)
             
             self.mlp = nnx.Sequential(
                 self.lin1,
-                # nnx.sigmoid,
                 nnx.gelu,
                 self.lin2,
-                # nnx.sigmoid,
                 nnx.gelu,
                 self.lin3,
-                # nnx.sigmoid,
                 nnx.gelu,
                 self.lin4,
-                # nnx.sigmoid,
                 nnx.gelu,
                 self.lin5,
-                # nnx.sigmoid,
                 nnx.gelu,
                 self.lin6,
+                nnx.gelu,
+                self.lin7,
+                nnx.gelu,
+                self.lin8,
+                nnx.gelu,
+                self.lin9,
             )
 
             self.eval = self.evalMLP
@@ -129,7 +136,9 @@ class Net(object):
         return 1. / (1 + np.exp(-a))
 
     def evalLinNet(self,x):
-        x_i = self.norm(x)
+        
+        x_i = np.copy(np.asarray(x))        
+        x_i = self.norm(x_i)
 
         layer1  = np.einsum('ij,j->i', self.weight1, x_i)                  + self.bias1
         layer2  = np.einsum('ij,j->i', self.weight2, self.sigmoid(layer1)) + self.bias2
@@ -146,23 +155,47 @@ class Net(object):
         return y
 
     def evalMLP(self,x):
-        if self.normed:
-            x_i = np.zeros(x.shape,dtype=float)
-            for ii,n_i in enumerate(self.norm_i):
-                x_i = x_i.at[ii].set(1.0 + (x[ii]-n_i[0])/(n_i[2]-n_i[1]))
+
+        x_i = np.copy(np.asarray(x))        
+
+        if len(x.shape) == 1:
+            if self.normed:
+                x_i = np.zeros(x.shape,dtype=float)
+                for ii,n_i in enumerate(self.norm_i):
+                    # x[ii] = ((x[ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0]
+                    # x_i[ii] = 1.0 + (x_i[ii]-n_i[0])/(n_i[2]-n_i[1]) 
+                    x_i = x_i.at[ii].set(1.0 + (x[ii]-n_i[0])/(n_i[2]-n_i[1]))
         else:
-            x_i = x
+            if self.normed:
+                x_i = np.zeros(x.shape,dtype=float)                
+                for ii,n_i in enumerate(self.norm_i):
+                    # x[:,ii] = ((x[:,ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0]
+                    # x_i[:,ii] = 1.0 + (x_i[:,ii]-n_i[0])/(n_i[2]-n_i[1]) 
+                    x_i = x_i.at[:,ii].set(1.0 + (x_i[:,ii]-n_i[0])/(n_i[2]-n_i[1]))
+
+
+        # if self.normed:
+        #     x_i = np.zeros(x.shape,dtype=float)
+        #     for ii,n_i in enumerate(self.norm_i):
+        #         x_i = x_i.at[ii].set(1.0 + (x[ii]-n_i[0])/(n_i[2]-n_i[1]))
+        # else:
+        #     x_i = x
 
         y_i = self.mlp(x_i)
-        
+
         if self.normed:
-            y = np.zeros(y_i.shape,dtype=float)
-            for ii,n_i in enumerate(self.norm_o):
-                y = y.at[ii].set(((y_i[ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0])
+            if len(x.shape) == 1:
+                y = np.zeros(y_i.shape,dtype=float)
+                for ii,n_i in enumerate(self.norm_o):
+                    y = y.at[ii].set(((y_i[ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0])
+            else:
+                y = np.zeros(y_i.shape,dtype=float)
+                for ii,n_i in enumerate(self.norm_o):
+                    y = y.at[:,ii].set(((y_i[:,ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0])
         else:
             y = y_i
 
-        return y
+        return y        
 
 
 class modpred(object):
@@ -183,19 +216,28 @@ class modpred(object):
     def pred(self,inpars):
         return self.anns.eval(inpars)
 
-    def getMIST(self,x):#**kwargs):
+    def getMIST(self,pars):#**kwargs):
 
         # x = np.array([kwargs.get('age'),kwargs.get('mass'),kwargs.get('feh'),kwargs.get('afe')])        
 
-        modpred = self.pred(x)
+        pars = np.copy(np.asarray(pars))
+        modpred = self.pred(pars)
 
         out = {}
+
         # stick in input labels
         for ii,kk in enumerate(self.anns.label_i):
-            out[kk] = x[ii]#kwargs.get(kk)
+            if len(pars.shape) == 1:
+                out[kk] = pars[ii] #kwargs.get(kk)
+            else:
+                out[kk] = pars[:,ii]
         
-        out_i = {x:modpred[ii] for ii,x in enumerate(self.anns.label_o)}
-        out.update(out_i)
+        if len(pars.shape) == 1:
+            out_i = {y:modpred[ii] for ii,y in enumerate(self.anns.label_o)}
+            out.update(out_i)
+        else:
+            out_i = {y:modpred[:,ii] for ii,y in enumerate(self.anns.label_o)}
+            out.update(out_i)
 
         if 'log_age' in out.keys():
             out['log(Age)'] = out.pop('log_age')
