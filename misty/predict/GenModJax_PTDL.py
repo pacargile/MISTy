@@ -160,18 +160,18 @@ class Net(object):
 
         if len(x.shape) == 1:
             if self.normed:
-                x_i = np.zeros(x.shape,dtype=float)
+                x_ii = np.zeros(x.shape,dtype=float)
                 for ii,n_i in enumerate(self.norm_i):
                     # x[ii] = ((x[ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0]
                     # x_i[ii] = 1.0 + (x_i[ii]-n_i[0])/(n_i[2]-n_i[1]) 
-                    x_i = x_i.at[ii].set(1.0 + (x[ii]-n_i[0])/(n_i[2]-n_i[1]))
+                    x_ii = x_ii.at[ii].set(1.0 + (x_i[ii]-n_i[0])/(n_i[2]-n_i[1]))
         else:
             if self.normed:
-                x_i = np.zeros(x.shape,dtype=float)                
+                x_ii = np.zeros(x.shape,dtype=float)                
                 for ii,n_i in enumerate(self.norm_i):
                     # x[:,ii] = ((x[:,ii]-1.0)*(n_i[2]-n_i[1])) + n_i[0]
                     # x_i[:,ii] = 1.0 + (x_i[:,ii]-n_i[0])/(n_i[2]-n_i[1]) 
-                    x_i = x_i.at[:,ii].set(1.0 + (x_i[:,ii]-n_i[0])/(n_i[2]-n_i[1]))
+                    x_ii = x_ii.at[:,ii].set(1.0 + (x_i[:,ii]-n_i[0])/(n_i[2]-n_i[1]))
 
 
         # if self.normed:
@@ -181,7 +181,7 @@ class Net(object):
         # else:
         #     x_i = x
 
-        y_i = self.mlp(x_i)
+        y_i = self.mlp(x_ii)
 
         if self.normed:
             if len(x.shape) == 1:
