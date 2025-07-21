@@ -21,11 +21,13 @@ def defmod(D_in,H1,H2,H3,D_out,nntype='MLP'):
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out)
     elif nntype == 'CNN':
         return NNmodels.CNN(D_in,H1,H2,H3,D_out)
+    elif nntype == 'GenSel':
+        return NNmodels.StellarPredictor(input_dim=D_in, output_dim=D_out, latent_dim=H1, latent_steps=H2)
     else:
         return NNmodels.MLP(D_in,H1,H2,H3,D_out)
 
 
-def readNN(nnpath,nntype='MLP'):
+def readNN(nnpath,nntype='MLP',D_in=None,H1=None,H2=None,H3=None,D_out=None):
     # read in the file for the previous run 
     nnh5 = h5py.File(nnpath,'r')
 
@@ -75,7 +77,14 @@ class ANN(object):
 
         self.nntype = kwargs.get('nntype','LinNet')
 
-        self.model = readNN(self.nnpath,nntype=self.nntype)
+        D_in = kwargs.get('D_in',None)
+        H1 = kwargs.get('H1',None)
+        H2 = kwargs.get('H2',None)
+        H3 = kwargs.get('H3',None)
+        D_out = kwargs.get('D_out',None)
+
+        self.model = readNN(self.nnpath,nntype=self.nntype, 
+                            D_in=D_in,H1=H1,H2=H2,H3=H3,D_out=D_out)
 
 
         # read in normalization info
@@ -132,7 +141,7 @@ class ANN(object):
 
 class modpred(object):
     """docstring for modpred"""
-    def __init__(self, nnpath=None, nntype='LinNet', normed=False, applyspot=False):
+    def __init__(self, nnpath=None, nntype='LinNet', **kwargs):
         super(modpred, self).__init__()
         
         if nnpath != None:
@@ -140,11 +149,17 @@ class modpred(object):
         else:
             self.nnpath  = misty.__abspath__+'data/ANN/mistyNN.h5'
 
-        self.applyspot = applyspot
+        self.applyspot = kwargs.get('applyspot',False)
+        self.normed = kwargs.get('normed',False)
 
-        self.normed = normed
+        self.D_in = kwargs.get('D_in',None)
+        self.H1 = kwargs.get('H1',None)
+        self.H2 = kwargs.get('H2',None)
+        self.H3 = kwargs.get('H3',None)
+        self.D_out = kwargs.get('D_out',None)
 
-        self.anns = ANN(nnpath=self.nnpath,nntype=nntype,normed=self.normed)
+        self.anns = ANN(nnpath=self.nnpath,nntype=nntype,normed=self.normed,
+                        D_in=self.D_in,H1=self.H1,H2=self.H2,H3=self.H3,D_out=self.D_out)
 
         self.modpararr = self.anns.label_o
         

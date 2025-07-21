@@ -202,3 +202,112 @@ class CNN(nn.Module):
         # Pass through MLP
         y = self.mlp(y_i)  # Shape: (batch_size, D_out)
         return y
+    
+
+# New Approach using TrackGenerator and AgeSelector
+
+# ------------------------------
+# Track Generator Module
+# ------------------------------
+
+class TrackGenerator(nn.Module):
+    def __init__(self, input_dim=3, latent_dim=32, latent_steps=128, hidden_dim=256):
+        """
+        input_dim: (Mi, [Fe/H], [alpha/Fe])
+        latent_dim: dimensionality of latent representation per step
+        latent_steps: number of steps in latent trajectory (e.g., 128)
+        hidden_dim: hidden layer width
+        """
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+        )
+        # Output latent trajectory: (latent_steps, latent_dim)
+        self.decoder = nn.Linear(hidden_dim, latent_steps * latent_dim)
+        self.latent_dim = latent_dim
+        self.latent_steps = latent_steps
+
+    def forward(self, x):
+        """
+        x: (batch_size, input_dim)
+        returns latent trajectory: (batch_size, latent_steps, latent_dim)
+        """
+        x = self.encoder(x)  # (batch_size, hidden_dim)
+        latent = self.decoder(x)  # (batch_size, latent_steps * latent_dim)
+        latent = latent.view(-1, self.latent_steps, self.latent_dim)
+        return latent
+
+
+# ------------------------------
+# Age Selector Module
+# ------------------------------
+
+class AgeSelector(nn.Module):
+    def __init__(self, latent_dim=32, latent_steps=128, hidden_dim=128, output_dim=6):
+        """
+        latent_dim: same as TrackGenerator latent_dim
+        latent_steps: number of latent steps
+        output_dim: number of predicted physical parameters (e.g., Teff, logg, etc.)
+        """
+        super().__init__()
+        self.hidden_dim = hidden_dim
+        
+        # Simple MLP selector: (age + pooled latent) → output labels
+        self.selector = nn.Sequential(
+            nn.Linear(1 + latent_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim),
+        )
+
+    def forward(self, age, latent):
+        """
+        age: (batch_size, 1)
+        latent: (batch_size, latent_steps, latent_dim)
+        """
+        # Soft pooling: compute soft attention weights from age
+        batch_size = latent.size(0)
+        steps = torch.linspace(0, 1, latent.size(1), device=age.device).unsqueeze(0)  # (1, latent_steps)
+        
+        # Normalize age into [0, 1] domain for attention
+        age_norm = age / age.max()
+        attn_weights = torch.exp(-100 * (steps - age_norm).pow(2))  # Gaussian-like attention
+        attn_weights = attn_weights / attn_weights.sum(dim=1, keepdim=True)  # normalize
+        
+        # Weighted sum over latent steps
+        pooled_latent = torch.sum(latent * attn_weights.unsqueeze(-1), dim=1)  # (batch_size, latent_dim)
+        
+        # Concatenate age input
+        selector_input = torch.cat([age, pooled_latent], dim=1)  # (batch_size, 1 + latent_dim)
+        
+        return self.selector(selector_input)
+
+
+# ------------------------------
+# Combined Model
+# ------------------------------
+
+class StellarPredictor(nn.Module):
+    def __init__(self, input_dim=4, output_dim=6, latent_dim=32, latent_steps=128):
+        """
+        input_dim: (Mi, [Fe/H], [alpha/Fe], age)
+        output_dim: predicted physical labels
+        """
+        super().__init__()
+        self.track_gen = TrackGenerator(input_dim=3, latent_dim=latent_dim, latent_steps=latent_steps)
+        self.age_selector = AgeSelector(latent_dim=latent_dim, latent_steps=latent_steps, output_dim=output_dim)
+
+    def forward(self, x):
+        """
+        x: (batch_size, 4) → (Mi, [Fe/H], [alpha/Fe], age)
+        """
+        track_input = x[:, :3]  # (Mi, [Fe/H], [alpha/Fe])
+        age = x[:, 3:4]  # age
+        
+        latent = self.track_gen(track_input)
+        output = self.age_selector(age, latent)
+        return output

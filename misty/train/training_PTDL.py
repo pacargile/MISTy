@@ -51,6 +51,8 @@ def defmod(D_in,H1,H2,H3,D_out,NNtype='MLP'):
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out)
     elif NNtype == 'CNN':
         return NNmodels.CNN(D_in,H1,H2,H3,D_out)
+    elif NNtype == 'GenSel':
+        return NNmodels.StellarPredictor(input_dim=D_in, output_dim=D_out, latent_dim=H1, latent_steps=H2)
     else:
         return NNmodels.MLP(D_in,H1,H2,H3,D_out)
 
@@ -295,6 +297,9 @@ class TrainMod(object):
 
         print('Model Arch:')
         print(model)
+        model_size = sum(p.numel() for p in model.parameters())
+        print(f"Model params: {model_size / 1024 / 1024:.2f} M")
+        sys.stdout.flush()
 
         # set up model to start training
         model.to(device)
