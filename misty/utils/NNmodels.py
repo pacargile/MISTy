@@ -291,7 +291,7 @@ class AgeSelector(nn.Module):
 # Combined Model
 # ------------------------------
 
-class StellarPredictor(nn.Module):
+class TwoStep(nn.Module):
     def __init__(self, input_dim=4, output_dim=6, latent_dim=32, latent_steps=128):
         """
         input_dim: (Mi, [Fe/H], [alpha/Fe], age)

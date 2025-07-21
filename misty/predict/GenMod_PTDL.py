@@ -21,8 +21,8 @@ def defmod(D_in,H1,H2,H3,D_out,nntype='MLP'):
         return NNmodels.LinNet(D_in,H1,H2,H3,D_out)
     elif nntype == 'CNN':
         return NNmodels.CNN(D_in,H1,H2,H3,D_out)
-    elif nntype == 'GenSel':
-        return NNmodels.StellarPredictor(input_dim=D_in, output_dim=D_out, latent_dim=H1, latent_steps=H2)
+    elif nntype == 'TwoStep':
+        return NNmodels.TwoStep(input_dim=D_in, output_dim=D_out, latent_dim=H1, latent_steps=H2)
     else:
         return NNmodels.MLP(D_in,H1,H2,H3,D_out)
 
