@@ -24,7 +24,7 @@ from torch.multiprocessing import Pool
 from astropy.table import Table,vstack
 
 import matplotlib
-matplotlib.use('AGG')
+# matplotlib.use('AGG')
 import matplotlib.pyplot as plt
 
 import traceback

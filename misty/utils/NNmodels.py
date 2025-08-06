@@ -211,7 +211,7 @@ class CNN(nn.Module):
 # ------------------------------
 
 class TrackGenerator(nn.Module):
-    def __init__(self, input_dim=3, latent_dim=32, latent_steps=128, hidden_dim=256):
+    def __init__(self, input_dim=3, latent_dim=32, latent_steps=128, hidden_dim=1024):
         """
         input_dim: (Mi, [Fe/H], [alpha/Fe])
         latent_dim: dimensionality of latent representation per step
@@ -224,9 +224,16 @@ class TrackGenerator(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
         )
         # Output latent trajectory: (latent_steps, latent_dim)
-        self.decoder = nn.Linear(hidden_dim, latent_steps * latent_dim)
+        self.decoder = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, latent_steps * latent_dim),
+        )
+
         self.latent_dim = latent_dim
         self.latent_steps = latent_steps
 
@@ -287,6 +294,35 @@ class AgeSelector(nn.Module):
         return self.selector(selector_input)
 
 
+# Alternative Age Selector with FiLM conditioning
+class AgeSelectorFiLM(nn.Module):
+    def __init__(self, latent_dim, latent_steps, hidden_dim, output_dim):
+        super().__init__()
+        self.latent_steps = latent_steps
+        self.latent_dim = latent_dim
+
+        self.film_gen = nn.Sequential(
+            nn.Linear(1, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 2 * latent_dim)  # gamma and beta
+        )
+
+        self.selector = nn.Sequential(
+            nn.Linear(latent_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim),
+        )
+
+    def forward(self, age, latent):
+        gamma_beta = self.film_gen(age)  # (batch_size, 2 * latent_dim)
+        gamma, beta = gamma_beta.chunk(2, dim=-1)  # each: (batch_size, latent_dim)
+
+        latent_film = gamma.unsqueeze(1) * latent + beta.unsqueeze(1)  # (batch, steps, latent_dim)
+
+        pooled_latent = latent_film.mean(dim=1)  # average across steps
+
+        return self.selector(pooled_latent)
+    
 # ------------------------------
 # Combined Model
 # ------------------------------
@@ -299,7 +335,7 @@ class TwoStep(nn.Module):
         """
         super().__init__()
         self.track_gen = TrackGenerator(input_dim=3, latent_dim=latent_dim, latent_steps=latent_steps)
-        self.age_selector = AgeSelector(latent_dim=latent_dim, latent_steps=latent_steps, output_dim=output_dim)
+        self.age_selector = AgeSelectorFiLM(latent_dim=latent_dim, latent_steps=latent_steps, output_dim=output_dim)
 
     def forward(self, x):
         """
@@ -311,3 +347,28 @@ class TwoStep(nn.Module):
         latent = self.track_gen(track_input)
         output = self.age_selector(age, latent)
         return output
+    
+# ------------------------------
+# Normalization Wrapper
+# ------------------------------
+
+
+class NormalizedModel(nn.Module):
+    def __init__(self, model, input_mean, input_std, output_mean, output_std):
+        super().__init__()
+        self.model = model
+        self.register_buffer("input_mean", torch.tensor(input_mean).float())
+        self.register_buffer("input_std", torch.tensor(input_std).float())
+        self.register_buffer("output_mean", torch.tensor(output_mean).float())
+        self.register_buffer("output_std", torch.tensor(output_std).float())
+
+    def normalize_input(self, x):
+        return (x - self.input_mean) / self.input_std
+
+    def denormalize_output(self, y):
+        return y * self.output_std + self.output_mean
+
+    def forward(self, x):
+        x_norm = self.normalize_input(x)
+        y_norm = self.model(x_norm)
+        return self.denormalize_output(y_norm)
