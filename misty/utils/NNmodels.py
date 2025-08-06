@@ -317,7 +317,6 @@ class AgeSelectorFiLM(nn.Module):
             nn.Linear(hidden_dim, output_dim),
         )
 
-
     def forward(self, age, latent):
         gamma_beta = self.film_gen(age)  # (batch_size, 2 * latent_dim)
         gamma, beta = gamma_beta.chunk(2, dim=-1)  # each: (batch_size, latent_dim)
