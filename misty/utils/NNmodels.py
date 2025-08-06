@@ -296,10 +296,11 @@ class AgeSelector(nn.Module):
 
 # Alternative Age Selector with FiLM conditioning
 class AgeSelectorFiLM(nn.Module):
-    def __init__(self, latent_dim, latent_steps, hidden_dim, output_dim):
+    def __init__(self, latent_dim=32, latent_steps=128, hidden_dim=128, output_dim=6):
         super().__init__()
         self.latent_steps = latent_steps
         self.latent_dim = latent_dim
+        self.hidden_dim = hidden_dim
 
         self.film_gen = nn.Sequential(
             nn.Linear(1, hidden_dim),
@@ -307,11 +308,15 @@ class AgeSelectorFiLM(nn.Module):
             nn.Linear(hidden_dim, 2 * latent_dim)  # gamma and beta
         )
 
+        # Simple MLP selector: (age + pooled latent) → output labels
         self.selector = nn.Sequential(
             nn.Linear(latent_dim, hidden_dim),
             nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
             nn.Linear(hidden_dim, output_dim),
         )
+
 
     def forward(self, age, latent):
         gamma_beta = self.film_gen(age)  # (batch_size, 2 * latent_dim)
