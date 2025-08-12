@@ -207,150 +207,131 @@ class CNN(nn.Module):
 # New Approach using TrackGenerator and AgeSelector
 
 # ------------------------------
-# Track Generator Module
+# Utility: Residual MLP Block
 # ------------------------------
-
-class TrackGenerator(nn.Module):
-    def __init__(self, input_dim=3, latent_dim=32, latent_steps=128, hidden_dim=1024):
-        """
-        input_dim: (Mi, [Fe/H], [alpha/Fe])
-        latent_dim: dimensionality of latent representation per step
-        latent_steps: number of steps in latent trajectory (e.g., 128)
-        hidden_dim: hidden layer width
-        """
+class ResBlock(nn.Module):
+    def __init__(self, dim, hidden=None, dropout=0.0):
         super().__init__()
-        self.encoder = nn.Sequential(
+        h = hidden or dim
+        self.fc1 = nn.Linear(dim, h)
+        self.fc2 = nn.Linear(h, dim)
+        self.act = nn.GELU()
+        self.norm = nn.LayerNorm(dim)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        y = self.act(self.fc1(self.norm(x)))
+        y = self.dropout(y)
+        y = self.fc2(self.act(y))
+        return x + y
+
+# ------------------------------
+# Phase warp for step positions
+# alpha in [0,1]: larger -> more density at late phases
+# ------------------------------
+def phase_warp(u, alpha=0.6):
+    # convex warp; u in [0,1]
+    return (1 - alpha) * u + alpha * u * u
+
+# ------------------------------
+# Track Generator (deeper, residual)
+# ------------------------------
+class TrackGenerator(nn.Module):
+    def __init__(self, input_dim=3, latent_dim=128, latent_steps=512,
+                 hidden_dim=512, nblocks=3, dropout=0.0):
+        super().__init__()
+        self.latent_dim = latent_dim
+        self.latent_steps = latent_steps
+
+        self.inp = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.GELU(),
+            nn.LayerNorm(hidden_dim),
         )
-        # Output latent trajectory: (latent_steps, latent_dim)
-        self.decoder = nn.Sequential(
+        self.blocks = nn.Sequential(*[ResBlock(hidden_dim, dropout=dropout) for _ in range(nblocks)])
+        self.dec = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(hidden_dim, latent_steps * latent_dim),
         )
 
-        self.latent_dim = latent_dim
-        self.latent_steps = latent_steps
-
     def forward(self, x):
-        """
-        x: (batch_size, input_dim)
-        returns latent trajectory: (batch_size, latent_steps, latent_dim)
-        """
-        x = self.encoder(x)  # (batch_size, hidden_dim)
-        latent = self.decoder(x)  # (batch_size, latent_steps * latent_dim)
-        latent = latent.view(-1, self.latent_steps, self.latent_dim)
-        return latent
-
+        h = self.inp(x)
+        h = self.blocks(h)
+        lat = self.dec(h)
+        return lat.view(-1, self.latent_steps, self.latent_dim)
 
 # ------------------------------
-# Age Selector Module
+# Age-Selector with learned center and temperature
+# Optional conditioning on (Mi, FeH, aFe)
 # ------------------------------
-
-class AgeSelector(nn.Module):
-    def __init__(self, latent_dim=32, latent_steps=128, hidden_dim=128, output_dim=6):
-        """
-        latent_dim: same as TrackGenerator latent_dim
-        latent_steps: number of latent steps
-        output_dim: number of predicted physical parameters (e.g., Teff, logg, etc.)
-        """
+class AgeSelectorAttn(nn.Module):
+    def __init__(self, latent_dim=128, latent_steps=512, hidden_dim=512, output_dim=8):
         super().__init__()
-        self.hidden_dim = hidden_dim
-        
-        # Simple MLP selector: (age + pooled latent) → output labels
-        self.selector = nn.Sequential(
-            nn.Linear(1 + latent_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim),
-        )
-
-    def forward(self, age, latent):
-        """
-        age: (batch_size, 1)
-        latent: (batch_size, latent_steps, latent_dim)
-        """
-        # Soft pooling: compute soft attention weights from age
-        batch_size = latent.size(0)
-        steps = torch.linspace(0, 1, latent.size(1), device=age.device).unsqueeze(0)  # (1, latent_steps)
-        
-        # Normalize age into [0, 1] domain for attention
-        age_norm = age / age.max()
-        attn_weights = torch.exp(-100 * (steps - age_norm).pow(2))  # Gaussian-like attention
-        attn_weights = attn_weights / attn_weights.sum(dim=1, keepdim=True)  # normalize
-        
-        # Weighted sum over latent steps
-        pooled_latent = torch.sum(latent * attn_weights.unsqueeze(-1), dim=1)  # (batch_size, latent_dim)
-        
-        # Concatenate age input
-        selector_input = torch.cat([age, pooled_latent], dim=1)  # (batch_size, 1 + latent_dim)
-        
-        return self.selector(selector_input)
-
-
-# Alternative Age Selector with FiLM conditioning
-class AgeSelectorFiLM(nn.Module):
-    def __init__(self, latent_dim=32, latent_steps=128, hidden_dim=128, output_dim=6):
-        super().__init__()
-        self.latent_steps = latent_steps
         self.latent_dim = latent_dim
-        self.hidden_dim = hidden_dim
+        self.latent_steps = latent_steps
 
-        self.film_gen = nn.Sequential(
-            nn.Linear(1, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 2 * latent_dim)  # gamma and beta
+        # control: predicts attention center s in [0,1] and temperature tau>0
+        # inputs: age (1) + cond (3) = 4
+        self.ctrl = nn.Sequential(
+            nn.Linear(4, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 2)
         )
 
-        # Simple MLP selector: (age + pooled latent) → output labels
-        self.selector = nn.Sequential(
+        self.head = nn.Sequential(
             nn.Linear(latent_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, output_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 2 * output_dim)  # [mu, log_sigma] per output
         )
 
-    def forward(self, age, latent):
-        gamma_beta = self.film_gen(age)  # (batch_size, 2 * latent_dim)
-        gamma, beta = gamma_beta.chunk(2, dim=-1)  # each: (batch_size, latent_dim)
+        # precompute warped step positions
+        steps = torch.linspace(0, 1, latent_steps)
+        self.register_buffer("steps", phase_warp(steps)[None, :])  # (1, S)
 
-        latent_film = gamma.unsqueeze(1) * latent + beta.unsqueeze(1)  # (batch, steps, latent_dim)
+    def forward(self, age, latent, cond):  # cond = (Mi, FeH, aFe)
+        # ctrl
+        ctrl_in = torch.cat([age, cond], dim=-1)    # (B, 4)
+        s, log_tau = self.ctrl(ctrl_in).chunk(2, dim=-1)
+        s = torch.sigmoid(s)                        # center in [0,1]
+        tau = F.softplus(log_tau) + 1e-3            # width > 0
 
-        pooled_latent = latent_film.mean(dim=1)  # average across steps
+        # attention over warped steps
+        d2 = (self.steps - s).pow(2)                # (B, S)
+        attn = torch.softmax(-d2 / tau.clamp_min(1e-3), dim=1)  # (B, S)
 
-        return self.selector(pooled_latent)
-    
+        pooled = torch.sum(latent * attn.unsqueeze(-1), dim=1)  # (B, D)
+
+        # heteroscedastic head
+        out = self.head(pooled)                     # (B, 2*D_out)
+        mu, log_sigma = out.chunk(2, dim=-1)        # each (B, D_out)
+        return mu, log_sigma
+
 # ------------------------------
-# Combined Model
+# Combined Model (Upgraded)
 # ------------------------------
-
 class TwoStep(nn.Module):
-    def __init__(self, input_dim=4, output_dim=6, latent_dim=32, latent_steps=128):
-        """
-        input_dim: (Mi, [Fe/H], [alpha/Fe], age)
-        output_dim: predicted physical labels
-        """
+    def __init__(self, input_dim=4, output_dim=8,
+                 latent_dim=128, latent_steps=512, hidden_dim=512,
+                 tg_blocks=3, dropout=0.0):
         super().__init__()
-        self.track_gen = TrackGenerator(input_dim=3, latent_dim=latent_dim, latent_steps=latent_steps)
-        self.age_selector = AgeSelectorFiLM(latent_dim=latent_dim, latent_steps=latent_steps, output_dim=output_dim)
+        self.output_dim = output_dim
+        self.track_gen = TrackGenerator(
+            input_dim=3, latent_dim=latent_dim, latent_steps=latent_steps,
+            hidden_dim=hidden_dim, nblocks=tg_blocks, dropout=dropout
+        )
+        self.age_selector = AgeSelectorAttn(
+            latent_dim=latent_dim, latent_steps=latent_steps,
+            hidden_dim=hidden_dim, output_dim=output_dim
+        )
 
-    def forward(self, x):
-        """
-        x: (batch_size, 4) → (Mi, [Fe/H], [alpha/Fe], age)
-        """
-        track_input = x[:, :3]  # (Mi, [Fe/H], [alpha/Fe])
-        age = x[:, 3:4]  # age
-        
-        latent = self.track_gen(track_input)
-        output = self.age_selector(age, latent)
-        return output
+    def forward(self, x, return_variance=False):
+        # x: (B, 4) = (Mi, FeH, aFe, log_age)
+        cond = x[:, :3]
+        age  = x[:, 3:4]
+        latent = self.track_gen(cond)
+        mu, log_sigma = self.age_selector(age, latent, cond)
+        return (mu, log_sigma) if return_variance else mu
     
 # ------------------------------
 # Normalization Wrapper

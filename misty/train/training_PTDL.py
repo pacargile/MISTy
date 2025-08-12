@@ -40,6 +40,21 @@ from ..utils import readmist_PTDL as readmist
 from ..predict import GenMod_PTDL as GenMod
 # from ..predict import GenModJax as GenMod
 
+class GaussianNLLLoss(nn.Module):
+    def __init__(self, eps=1e-6):
+        super().__init__()
+        self.eps = eps
+
+    def forward(self, mu, log_sigma, target, sample_weights=None, channel_weights=None):
+        # variance = exp(2*log_sigma)
+        var = torch.exp(2.0 * log_sigma).clamp_min(self.eps)
+        nll = 0.5 * ((target - mu) ** 2 / var + torch.log(var))
+        if channel_weights is not None:
+            nll = nll * channel_weights[None, :]
+        if sample_weights is not None:
+            nll = nll * sample_weights[:, None]
+        return nll.mean()
+
 def slicebatch(inlist,N):
     '''
     Function to slice a list into batches of N elements. Last sublist might have < N elements.
@@ -359,10 +374,14 @@ class TrainMod(object):
 
         # initialize the loss function
         # loss_fn = torch.nn.MSELoss()
-        loss_fn = torch.nn.MSELoss(reduction='mean')
+        # loss_fn = torch.nn.MSELoss(reduction='mean')
         # loss_fn = torch.nn.HuberLoss(reduction='mean')
         # loss_fn = torch.nn.SmoothL1Loss()
         # loss_fn = torch.nn.L1Loss()
+
+        # custom loss function
+        loss_fn = GaussianNLLLoss().to(device)
+        eepidx = self.label_o.index('EEP')
 
         # initialize the optimizer
         learning_rate = self.lr
@@ -488,6 +507,9 @@ class TrainMod(object):
             Y_train_Tensor = Variable(Y_train_labels.type(dtype), requires_grad=False)
             Y_train_Tensor = Y_train_Tensor.to(device)
 
+            sample_w = torch.where(Y_train_Tensor[:, eepidx] > 400, 2.0, 1.0)
+            sample_w = sample_w.to(Y_train_Tensor.device)
+
             # create tensor for input training labels
             X_valid_labels = valid_labelsin
             X_valid_Tensor = Variable(X_valid_labels.type(dtype), requires_grad=False)
@@ -538,12 +560,13 @@ class TrainMod(object):
 
                 #     # Calling the step function on an Optimizer makes an update to its parameters
                 #     optimizer.step()
-                
-                
-                Y_pred_train_Tensor = model(X_train_Tensor)
-                                    
+
+
+                Y_pred_train_Tensor, Y_pred_train_variance = model(X_train_Tensor, return_variance=True)
+
                 # Compute and print loss.
-                loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor)
+                # loss = loss_fn(Y_pred_train_Tensor, Y_train_Tensor)
+                loss = loss_fn(Y_pred_train_Tensor, Y_pred_train_variance, Y_train_Tensor, sample_weights=sample_w)
 
                 # Backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
@@ -580,8 +603,8 @@ class TrainMod(object):
                         medres = 0
                         stdres = 0
 
-                        Y_pred_valid_Tensor = model(X_valid_Tensor)                        
-                        loss_valid += loss_fn(Y_pred_valid_Tensor, Y_valid_Tensor)
+                        Y_pred_valid_Tensor, Y_pred_valid_variance = model(X_valid_Tensor, return_variance=True)
+                        loss_valid += loss_fn(Y_pred_valid_Tensor, Y_pred_valid_variance, Y_valid_Tensor, sample_weights=None)
                         loss_valid_data = loss_valid.detach().data.item()
 
                         # if (iter_i % 100 == 0) and (iter_i != 0) and (j == 0):
